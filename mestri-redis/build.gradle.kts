@@ -1,3 +1,5 @@
+val testSourceSet = the<SourceSetContainer>()["test"]
+
 dependencies {
   api(project(":mestri-core"))
   api("org.springframework.data:spring-data-redis")
@@ -7,4 +9,18 @@ dependencies {
   testImplementation(kotlin("test"))
   testImplementation("org.testcontainers:junit-jupiter:1.20.4")
   testImplementation("org.testcontainers:testcontainers:1.20.4")
+}
+
+tasks.named<Test>("test") {
+  exclude("**/*IntegrationTest.class")
+}
+
+tasks.register<Test>("integrationTest") {
+  description = "Runs Redis-backed integration tests."
+  group = LifecycleBasePlugin.VERIFICATION_GROUP
+  testClassesDirs = testSourceSet.output.classesDirs
+  classpath = testSourceSet.runtimeClasspath
+  include("**/*IntegrationTest.class")
+  useJUnitPlatform()
+  shouldRunAfter(tasks.named("test"))
 }

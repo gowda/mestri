@@ -9,8 +9,8 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    name: Run Formatter And Test Checks
+  ktlint:
+    name: Run Formatting Checks
     runs-on: ubuntu-latest
 
     steps:
@@ -30,8 +30,46 @@ jobs:
       - name: Run formatting checks
         run: ./gradlew --no-daemon ktlintCheck
 
-      - name: Run Redis integration tests
-        run: ./gradlew --no-daemon :mestri-redis:test
+  unit-tests:
+    name: Run Unit Tests
+    needs: ktlint
+    runs-on: ubuntu-latest
 
-      - name: Run full test suite
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Run unit test suite
         run: ./gradlew --no-daemon test
+
+  integration-tests:
+    name: Run Integration Tests
+    needs: ktlint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Run Redis integration tests
+        run: ./gradlew --no-daemon :mestri-redis:integrationTest
