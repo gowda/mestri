@@ -23,7 +23,12 @@ class RedisStaleWorkerCleanupIntegrationTest : RedisIntegrationSupport() {
       RedisMaintenanceExecutor(
         jobRecordStore = newJobRecordStore(redisTemplate),
         listAccessor = SpringRedisListAccessor(redisTemplate),
-        scheduledJobStore = RedisScheduledJobStore(newJobRecordStore(redisTemplate), newSortedSetAccessor(redisTemplate)),
+        scheduledJobStore =
+          RedisScheduledJobStore(
+            newJobRecordStore(redisTemplate),
+            newSortedSetAccessor(redisTemplate),
+          ),
+        sortedSetAccessor = newSortedSetAccessor(redisTemplate),
         leaseStore = newLeaseStore(redisTemplate),
         heartbeatStore = heartbeatStore,
       )

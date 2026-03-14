@@ -127,6 +127,19 @@ class RedisTerminalJobStoreTest {
       data.getOrPut(key) { mutableListOf() }.add(ScoredValue(value, score))
     }
 
+    override fun range(
+      key: String,
+      start: Long,
+      end: Long,
+    ): List<String> = data[key].orEmpty().map { it.value }
+
+    override fun remove(
+      key: String,
+      value: String,
+    ) {
+      data[key]?.removeAll { it.value == value }
+    }
+
     fun valuesFor(key: String): List<ScoredValue> = data[key].orEmpty()
   }
 }

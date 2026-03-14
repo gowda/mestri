@@ -12,4 +12,22 @@ class SpringRedisSortedSetAccessor(
   ) {
     redisTemplate.opsForZSet().add(key, value, score)
   }
+
+  override fun range(
+    key: String,
+    start: Long,
+    end: Long,
+  ): List<String> =
+    redisTemplate
+      .opsForZSet()
+      .range(key, start, end)
+      .orEmpty()
+      .toList()
+
+  override fun remove(
+    key: String,
+    value: String,
+  ) {
+    redisTemplate.opsForZSet().remove(key, value)
+  }
 }

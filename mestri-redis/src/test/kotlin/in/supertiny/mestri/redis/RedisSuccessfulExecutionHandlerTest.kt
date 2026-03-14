@@ -148,6 +148,17 @@ class RedisSuccessfulExecutionHandlerTest {
       value: String,
       score: Double,
     ) = Unit
+
+    override fun range(
+      key: String,
+      start: Long,
+      end: Long,
+    ): List<String> = emptyList()
+
+    override fun remove(
+      key: String,
+      value: String,
+    ) = Unit
   }
 
   private class InMemoryRedisSetAccessor : RedisSetAccessor {

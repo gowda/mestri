@@ -32,7 +32,12 @@ class RedisMaintenanceExecutorIntegrationTest : RedisIntegrationSupport() {
       RedisMaintenanceExecutor(
         jobRecordStore = jobRecordStore,
         listAccessor = SpringRedisListAccessor(redisTemplate),
-        scheduledJobStore = RedisScheduledJobStore(jobRecordStore, newSortedSetAccessor(redisTemplate)),
+        scheduledJobStore =
+          RedisScheduledJobStore(
+            jobRecordStore,
+            newSortedSetAccessor(redisTemplate),
+          ),
+        sortedSetAccessor = newSortedSetAccessor(redisTemplate),
         leaseStore = leaseStore,
         heartbeatStore = heartbeatStore,
       )
@@ -68,7 +73,10 @@ class RedisMaintenanceExecutorIntegrationTest : RedisIntegrationSupport() {
     val retryScore = redisTemplate.opsForZSet().score(RedisKeyspace.retry(), payload.jobId.value)
 
     assertEquals(JobBucket.RETRY, record?.bucket)
-    assertEquals("2", record?.payload?.metadata?.get(RedisRetryExecutionHandler.METADATA_NEXT_ATTEMPT))
+    assertEquals(
+      "2",
+      record?.payload?.metadata?.get(RedisRetryExecutionHandler.METADATA_NEXT_ATTEMPT),
+    )
     assertEquals(Instant.parse("2026-03-15T12:10:05Z").toEpochMilli().toDouble(), retryScore)
     assertNull(leaseStore.find(payload.jobId))
   }

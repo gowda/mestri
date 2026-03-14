@@ -8,4 +8,22 @@ fun interface RedisSortedSetWriter {
   )
 }
 
-interface RedisSortedSetAccessor : RedisSortedSetWriter
+fun interface RedisSortedSetRangeLookup {
+  fun range(
+    key: String,
+    start: Long,
+    end: Long,
+  ): List<String>
+}
+
+fun interface RedisSortedSetRemover {
+  fun remove(
+    key: String,
+    value: String,
+  )
+}
+
+interface RedisSortedSetAccessor :
+  RedisSortedSetWriter,
+  RedisSortedSetRangeLookup,
+  RedisSortedSetRemover

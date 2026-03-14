@@ -14,4 +14,8 @@ class RedisJobRecordStore(
     val fields = hashAccessor.entries(RedisKeyspace.job(jobId))
     return if (fields.isEmpty()) null else mapper.fromHash(fields)
   }
+
+  fun delete(jobId: JobId) {
+    hashAccessor.delete(RedisKeyspace.job(jobId))
+  }
 }

@@ -207,6 +207,12 @@ class RedisFlowIntegrationTest {
       sortedSets.getOrPut(key) { mutableListOf() }.add(ScoredValue(value, score))
     }
 
+    override fun range(
+      key: String,
+      start: Long,
+      end: Long,
+    ): List<String> = sortedSets[key].orEmpty().sortedBy { it.score }.map { it.value }
+
     override fun add(
       key: String,
       value: String,
@@ -220,6 +226,7 @@ class RedisFlowIntegrationTest {
       key: String,
       value: String,
     ) {
+      sortedSets[key]?.removeAll { it.value == value }
       sets[key]?.remove(value)
     }
 

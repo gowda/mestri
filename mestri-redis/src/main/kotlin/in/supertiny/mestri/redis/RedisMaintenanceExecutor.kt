@@ -1,8 +1,8 @@
 package `in`.supertiny.mestri.redis
 
 import `in`.supertiny.mestri.core.model.JobBucket
-import `in`.supertiny.mestri.core.runtime.CleanupStaleWorker
 import `in`.supertiny.mestri.core.runtime.CleanupRetainedBucket
+import `in`.supertiny.mestri.core.runtime.CleanupStaleWorker
 import `in`.supertiny.mestri.core.runtime.MaintenanceAction
 import `in`.supertiny.mestri.core.runtime.MaintenanceExecutor
 import `in`.supertiny.mestri.core.runtime.MaintenancePlan
@@ -16,6 +16,7 @@ class RedisMaintenanceExecutor(
   private val jobRecordStore: RedisJobRecordStore,
   private val listAccessor: RedisListAccessor,
   private val scheduledJobStore: RedisScheduledJobStore,
+  private val sortedSetAccessor: RedisSortedSetAccessor,
   private val leaseStore: RedisJobLeaseStore,
   private val heartbeatStore: RedisWorkerHeartbeatStore,
   private val backoffCalculator: RetryBackoffCalculator = RetryBackoffCalculator(),
@@ -46,7 +47,13 @@ class RedisMaintenanceExecutor(
           }
         }
 
-        is CleanupRetainedBucket -> skippedActions += action
+        is CleanupRetainedBucket -> {
+          if (cleanupRetainedBucket(action)) {
+            completedActions += action
+          } else {
+            skippedActions += action
+          }
+        }
       }
     }
 
@@ -65,7 +72,8 @@ class RedisMaintenanceExecutor(
     if (record.bucket != JobBucket.RUNNING) return false
 
     val payload = record.payload
-    val currentAttempt = payload.metadata[RedisRetryExecutionHandler.METADATA_NEXT_ATTEMPT]?.toIntOrNull() ?: 1
+    val currentAttempt =
+      payload.metadata[RedisRetryExecutionHandler.METADATA_NEXT_ATTEMPT]?.toIntOrNull() ?: 1
     val metadata =
       payload.metadata +
         mapOf(
@@ -76,13 +84,17 @@ class RedisMaintenanceExecutor(
     val retryPolicy = updatedPayload.retryPolicy
 
     if (retryPolicy.maxAttempts > currentAttempt) {
-      val dueAt = now.plus(backoffCalculator.nextDelay(retryPolicy, currentAttempt).toJavaDuration())
+      val dueAt =
+        now.plus(
+          backoffCalculator.nextDelay(retryPolicy, currentAttempt).toJavaDuration(),
+        )
       val retryPayload =
         updatedPayload.copy(
           metadata =
             updatedPayload.metadata +
               mapOf(
-                RedisRetryExecutionHandler.METADATA_LAST_ERROR_MESSAGE to METADATA_ORPHAN_ERROR_MESSAGE,
+                RedisRetryExecutionHandler.METADATA_LAST_ERROR_MESSAGE to
+                  METADATA_ORPHAN_ERROR_MESSAGE,
                 RedisRetryExecutionHandler.METADATA_LAST_FAILURE_AT to now.toString(),
                 RedisRetryExecutionHandler.METADATA_NEXT_ATTEMPT to (currentAttempt + 1).toString(),
               ),
@@ -111,7 +123,31 @@ class RedisMaintenanceExecutor(
       heartbeat.processId !in heartbeatStore.registeredProcessIds()
   }
 
+  private fun cleanupRetainedBucket(action: CleanupRetainedBucket): Boolean {
+    val maxEntries = action.maxEntries ?: return false
+    val bucketKey =
+      when (action.bucketName) {
+        BUCKET_SUCCEEDED -> RedisKeyspace.succeeded()
+        BUCKET_DELETED -> RedisKeyspace.deleted()
+        else -> return false
+      }
+    val retainedEntries = sortedSetAccessor.range(bucketKey, 0, -1)
+    if (retainedEntries.size <= maxEntries) return false
+
+    val trimCount = retainedEntries.size - maxEntries.toInt()
+    retainedEntries.take(trimCount).forEach { jobIdValue ->
+      sortedSetAccessor.remove(bucketKey, jobIdValue)
+      jobRecordStore.delete(
+        `in`.supertiny.mestri.core.model
+          .JobId(jobIdValue),
+      )
+    }
+    return true
+  }
+
   companion object {
+    const val BUCKET_SUCCEEDED: String = "succeeded"
+    const val BUCKET_DELETED: String = "deleted"
     const val METADATA_ORPHAN_RECOVERED_AT: String = "mestri.orphanRecoveredAt"
     const val METADATA_ORPHAN_WORKER_ID: String = "mestri.orphanWorkerId"
     const val METADATA_ORPHAN_ERROR_MESSAGE: String = "Worker lease expired"

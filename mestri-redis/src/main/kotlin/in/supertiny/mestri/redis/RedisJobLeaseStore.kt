@@ -40,7 +40,8 @@ class RedisJobLeaseStore(
   }
 
   fun findAll(): List<JobLease> =
-    setAccessor.members(RedisKeyspace.leaseRegistry())
+    setAccessor
+      .members(RedisKeyspace.leaseRegistry())
       .map(::JobId)
       .mapNotNull(::find)
 
