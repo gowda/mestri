@@ -115,6 +115,10 @@ class RedisQueueReservationStoreTest {
       hashes[key] = fields.toMap()
     }
 
+    override fun delete(key: String) {
+      hashes.remove(key)
+    }
+
     override fun rightPush(key: String, value: String) {
       lists.getOrPut(key) { mutableListOf() }.add(value)
     }

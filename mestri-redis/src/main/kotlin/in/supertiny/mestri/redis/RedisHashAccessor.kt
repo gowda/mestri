@@ -8,4 +8,8 @@ fun interface RedisHashWriter {
   fun putAll(key: String, fields: Map<String, String>)
 }
 
-interface RedisHashAccessor : RedisHashLookup, RedisHashWriter
+fun interface RedisHashDeleter {
+  fun delete(key: String)
+}
+
+interface RedisHashAccessor : RedisHashLookup, RedisHashWriter, RedisHashDeleter

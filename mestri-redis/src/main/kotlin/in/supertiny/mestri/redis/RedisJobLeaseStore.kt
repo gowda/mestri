@@ -33,6 +33,10 @@ class RedisJobLeaseStore(
     )
   }
 
+  fun delete(jobId: JobId) {
+    hashAccessor.delete(RedisKeyspace.workerLease(jobId))
+  }
+
   private fun requireField(fields: Map<String, String>, name: String): String =
     fields[name]?.takeIf { it.isNotBlank() }
       ?: throw IllegalArgumentException("Redis lease field '$name' is required.")

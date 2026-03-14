@@ -100,6 +100,10 @@ class RedisScheduledJobStoreTest {
     override fun putAll(key: String, fields: Map<String, String>) {
       data[key] = fields.toMap()
     }
+
+    override fun delete(key: String) {
+      data.remove(key)
+    }
   }
 
   private data class ScoredValue(

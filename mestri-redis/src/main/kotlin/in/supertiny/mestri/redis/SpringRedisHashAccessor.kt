@@ -12,4 +12,8 @@ class SpringRedisHashAccessor(
   override fun putAll(key: String, fields: Map<String, String>) {
     redisTemplate.opsForHash<String, String>().putAll(key, fields)
   }
+
+  override fun delete(key: String) {
+    redisTemplate.delete(key)
+  }
 }

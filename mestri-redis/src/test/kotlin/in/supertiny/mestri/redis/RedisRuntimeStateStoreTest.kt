@@ -40,6 +40,25 @@ class RedisRuntimeStateStoreTest {
   }
 
   @Test
+  fun `delete lease removes stored lease`() {
+    val hashAccessor = InMemoryRedisHashAccessor()
+    val store = RedisJobLeaseStore(hashAccessor)
+    val lease =
+      JobLease(
+        jobId = JobId("job-123"),
+        workerId = WorkerId("worker-1"),
+        acquiredAt = Instant.parse("2026-03-15T10:00:00Z"),
+        expiresAt = Instant.parse("2026-03-15T10:05:00Z"),
+      )
+
+    store.save(lease)
+
+    store.delete(lease.jobId)
+
+    assertNull(store.find(lease.jobId))
+  }
+
+  @Test
   fun `save heartbeat persists heartbeat and registers process`() {
     val hashAccessor = InMemoryRedisHashAccessor()
     val setAccessor = InMemoryRedisSetAccessor()
@@ -68,6 +87,10 @@ class RedisRuntimeStateStoreTest {
 
     override fun putAll(key: String, fields: Map<String, String>) {
       data[key] = fields.toMap()
+    }
+
+    override fun delete(key: String) {
+      data.remove(key)
     }
   }
 

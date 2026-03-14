@@ -89,5 +89,9 @@ class RedisJobRecordStoreTest {
       lastWrittenKey = key
       data[key] = fields.toMap()
     }
+
+    override fun delete(key: String) {
+      data.remove(key)
+    }
   }
 }
