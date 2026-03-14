@@ -1,6 +1,7 @@
 plugins {
   kotlin("jvm") version "1.9.25" apply false
   kotlin("plugin.spring") version "1.9.25" apply false
+  id("org.jlleitschuh.gradle.ktlint") version "14.1.0" apply false
   id("org.springframework.boot") version "3.3.13" apply false
   id("io.spring.dependency-management") version "1.1.7" apply false
   `java-library`
@@ -17,6 +18,7 @@ allprojects {
 
 subprojects {
   apply(plugin = "org.jetbrains.kotlin.jvm")
+  apply(plugin = "org.jlleitschuh.gradle.ktlint")
   apply(plugin = "java-library")
   apply(plugin = "io.spring.dependency-management")
 

@@ -1,4 +1,4 @@
-name: Test
+name: Checks
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   test:
-    name: Run Unit And Integration Tests
+    name: Run Formatter And Test Checks
     runs-on: ubuntu-latest
 
     steps:
@@ -26,6 +26,9 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+
+      - name: Run formatting checks
+        run: ./gradlew --no-daemon ktlintCheck
 
       - name: Run Redis integration tests
         run: ./gradlew --no-daemon :mestri-redis:test

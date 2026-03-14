@@ -1,6 +1,6 @@
 # Mestri
 
-[![Test](https://github.com/gowda/mestri/actions/workflows/test.yml/badge.svg)](https://github.com/gowda/mestri/actions/workflows/test.yml)
+[![Checks](https://github.com/gowda/mestri/actions/workflows/checks.yml/badge.svg)](https://github.com/gowda/mestri/actions/workflows/checks.yml)
 
 Mestri is a Redis-backed background job system for Kotlin and Spring Boot with Sidekiq-style client/server middleware, worker architecture, and dashboard, plus JobRunr-compatible APIs.
 
@@ -54,6 +54,18 @@ Run the test suite:
 ./gradlew test
 ```
 
+Run formatting checks:
+
+```bash
+./gradlew ktlintCheck
+```
+
+Format the codebase:
+
+```bash
+./gradlew ktlintFormat
+```
+
 ## Repository Layout
 
 ```text
@@ -76,11 +88,17 @@ This repository currently contains:
   - core contracts in `mestri-core`
   - Redis key schema and persistence primitives in `mestri-redis`
   - module-level tests for the implemented core and Redis layers
-  - real Redis-backed integration tests for:
-    - immediate queue flows
-    - scheduled and retry persistence
-    - succeeded and deleted retention buckets
-    - leases, heartbeats, and process registry behavior
+- real Redis-backed integration tests for:
+  - immediate queue flows
+  - scheduled and retry persistence
+  - succeeded and deleted retention buckets
+  - leases, heartbeats, and process registry behavior
+  - worker execution flows for success, retry, dead-lettering, and shutdown
+- completed work for the worker execution engine:
+  - queue polling and reservation
+  - server execution pipeline
+  - success, retry, and dead-letter transitions
+  - graceful worker shutdown coordination
 - GitHub Actions test automation
 - Dependabot configuration for Gradle and GitHub Actions updates
 
@@ -98,11 +116,12 @@ Current implementation coverage includes:
   - succeeded and deleted retention markers
 - shared Testcontainers-based Redis integration test support for `mestri-redis`
 
-The next major focus is the worker execution engine, starting with queue polling, reservation, execution flow, and state transitions.
+The next major focus is built-in orphan recovery and maintenance.
 
 ## Automation
 
-- GitHub Actions runs:
+- GitHub Actions checks run:
+  - `./gradlew --no-daemon ktlintCheck`
   - `./gradlew --no-daemon :mestri-redis:test`
   - `./gradlew --no-daemon test`
 - Dependabot is configured for grouped updates for:
