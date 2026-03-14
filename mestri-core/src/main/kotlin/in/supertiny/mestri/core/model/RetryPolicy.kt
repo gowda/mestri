@@ -1,4 +1,4 @@
-package in.supertiny.mestri.core.model
+package `in`.supertiny.mestri.core.model
 
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours

@@ -1,4 +1,4 @@
-package in.supertiny.mestri.core.model
+package `in`.supertiny.mestri.core.model
 
 @JvmInline
 value class QueueName(val value: String) {

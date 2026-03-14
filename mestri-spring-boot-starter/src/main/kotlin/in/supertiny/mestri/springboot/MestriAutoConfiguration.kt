@@ -1,4 +1,4 @@
-package in.supertiny.mestri.springboot
+package `in`.supertiny.mestri.springboot
 
 import org.springframework.boot.autoconfigure.AutoConfiguration
 

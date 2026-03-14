@@ -1,4 +1,4 @@
-package in.supertiny.mestri.dashboard
+package `in`.supertiny.mestri.dashboard
 
 /**
  * Marker entry point for the dashboard module.

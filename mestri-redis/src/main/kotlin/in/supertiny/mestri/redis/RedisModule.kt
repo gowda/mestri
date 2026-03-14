@@ -1,4 +1,4 @@
-package in.supertiny.mestri.redis
+package `in`.supertiny.mestri.redis
 
 /**
  * Marker entry point for the Redis integration module.

@@ -1,4 +1,4 @@
-package in.supertiny.mestri.core.model
+package `in`.supertiny.mestri.core.model
 
 import java.util.UUID
 

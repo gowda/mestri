@@ -1,4 +1,4 @@
-package in.supertiny.mestri.core.model
+package `in`.supertiny.mestri.core.model
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -48,6 +48,70 @@ class CoreDomainTypesTest {
   fun `retention policy rejects non positive global retention`() {
     assertFailsWith<IllegalArgumentException> {
       RetentionPolicy(global = 0.seconds)
+    }
+  }
+
+  @Test
+  fun `spring invocation descriptor stores target method and arguments`() {
+    val descriptor =
+      InvocationDescriptor(
+        target =
+          SpringBeanTarget(
+            className = "io.example.jobs.InvoiceJobs",
+            beanName = "invoiceJobs",
+          ),
+        method =
+          InvocationMethod(
+            name = "generateInvoice",
+            parameterTypeNames = listOf("java.lang.String", "java.lang.Long"),
+          ),
+        arguments =
+          listOf(
+            InvocationArgument("java.lang.String", "\"user-1\""),
+            InvocationArgument("java.lang.Long", "42"),
+          ),
+        labels = setOf("billing", "invoice"),
+      )
+
+    assertEquals("invoiceJobs", (descriptor.target as SpringBeanTarget).beanName)
+    assertEquals("generateInvoice", descriptor.method.name)
+    assertEquals(2, descriptor.arguments.size)
+  }
+
+  @Test
+  fun `standalone invocation descriptor supports handler ids`() {
+    val descriptor =
+      InvocationDescriptor(
+        target =
+          StandaloneHandlerTarget(
+            className = "io.example.jobs.StandaloneInvoiceHandler",
+            handlerId = "invoice-handler",
+          ),
+        method = InvocationMethod(name = "handle"),
+      )
+
+    assertEquals("invoice-handler", (descriptor.target as StandaloneHandlerTarget).handlerId)
+  }
+
+  @Test
+  fun `invocation descriptor rejects mismatched parameter types`() {
+    assertFailsWith<IllegalArgumentException> {
+      InvocationDescriptor(
+        target =
+          SpringBeanTarget(
+            className = "io.example.jobs.InvoiceJobs",
+            beanName = "invoiceJobs",
+          ),
+        method =
+          InvocationMethod(
+            name = "generateInvoice",
+            parameterTypeNames = listOf("java.lang.String"),
+          ),
+        arguments =
+          listOf(
+            InvocationArgument("java.lang.Long", "42"),
+          ),
+      )
     }
   }
 }
