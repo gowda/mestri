@@ -47,7 +47,7 @@ class JacksonJobPayloadSerializer(
   )
   private interface InvocationTargetMixin
 
-  private object DurationModule : SimpleModule("mestri-duration-module") {
+  internal object DurationModule : SimpleModule("mestri-duration-module") {
     init {
       addSerializer(Duration::class.java, DurationSerializer)
       addDeserializer(Duration::class.java, DurationDeserializer)
