@@ -26,6 +26,7 @@ class RedisMaintenanceExecutorIntegrationTest : RedisIntegrationSupport() {
     flushRedis(redisTemplate)
     val jobRecordStore = newJobRecordStore(redisTemplate)
     val leaseStore = newLeaseStore(redisTemplate)
+    val heartbeatStore = newHeartbeatStore(redisTemplate)
     val payload = samplePayload()
     val executor =
       RedisMaintenanceExecutor(
@@ -33,6 +34,7 @@ class RedisMaintenanceExecutorIntegrationTest : RedisIntegrationSupport() {
         listAccessor = SpringRedisListAccessor(redisTemplate),
         scheduledJobStore = RedisScheduledJobStore(jobRecordStore, newSortedSetAccessor(redisTemplate)),
         leaseStore = leaseStore,
+        heartbeatStore = heartbeatStore,
       )
     val now = Instant.parse("2026-03-15T12:10:00Z")
 

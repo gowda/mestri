@@ -17,6 +17,7 @@ class RedisMaintenanceExecutor(
   private val listAccessor: RedisListAccessor,
   private val scheduledJobStore: RedisScheduledJobStore,
   private val leaseStore: RedisJobLeaseStore,
+  private val heartbeatStore: RedisWorkerHeartbeatStore,
   private val backoffCalculator: RetryBackoffCalculator = RetryBackoffCalculator(),
 ) : MaintenanceExecutor {
   override fun execute(
@@ -37,8 +38,15 @@ class RedisMaintenanceExecutor(
         }
 
         is CleanupStaleWorker,
-        is CleanupRetainedBucket,
-        -> skippedActions += action
+        -> {
+          if (cleanupStaleWorker(action)) {
+            completedActions += action
+          } else {
+            skippedActions += action
+          }
+        }
+
+        is CleanupRetainedBucket -> skippedActions += action
       }
     }
 
@@ -93,6 +101,14 @@ class RedisMaintenanceExecutor(
 
     leaseStore.delete(action.jobId)
     return true
+  }
+
+  private fun cleanupStaleWorker(action: CleanupStaleWorker): Boolean {
+    val heartbeat = heartbeatStore.find(action.workerId) ?: return false
+    heartbeatStore.delete(action.workerId)
+    return heartbeatStore.find(action.workerId) == null &&
+      action.workerId !in heartbeatStore.registeredWorkerIds() &&
+      heartbeat.processId !in heartbeatStore.registeredProcessIds()
   }
 
   companion object {

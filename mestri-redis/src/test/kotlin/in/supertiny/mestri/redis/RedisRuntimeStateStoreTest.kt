@@ -82,6 +82,29 @@ class RedisRuntimeStateStoreTest {
   }
 
   @Test
+  fun `delete heartbeat removes worker and process registry entries`() {
+    val hashAccessor = InMemoryRedisHashAccessor()
+    val setAccessor = InMemoryRedisSetAccessor()
+    val store = RedisWorkerHeartbeatStore(hashAccessor, setAccessor)
+    val heartbeat =
+      WorkerHeartbeat(
+        workerId = WorkerId("worker-1"),
+        processId = ProcessId("process-1"),
+        queues = setOf("default"),
+        recordedAt = Instant.parse("2026-03-15T10:00:00Z"),
+        expiresAt = Instant.parse("2026-03-15T10:00:30Z"),
+      )
+
+    store.save(heartbeat)
+
+    store.delete(heartbeat.workerId)
+
+    assertNull(store.find(heartbeat.workerId))
+    assertEquals(emptySet(), store.registeredWorkerIds())
+    assertEquals(emptySet(), store.registeredProcessIds())
+  }
+
+  @Test
   fun `find all lease and heartbeat snapshots enumerate registered state`() {
     val hashAccessor = InMemoryRedisHashAccessor()
     val setAccessor = InMemoryRedisSetAccessor()

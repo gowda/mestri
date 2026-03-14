@@ -9,6 +9,7 @@ import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 
 class RedisRuntimeStateIntegrationTest : RedisIntegrationSupport() {
   @Test
@@ -56,5 +57,28 @@ class RedisRuntimeStateIntegrationTest : RedisIntegrationSupport() {
     assertNotNull(loaded)
     assertEquals(heartbeat, loaded)
     assertEquals(setOf(ProcessId("process-1")), registeredProcesses)
+  }
+
+  @Test
+  fun `heartbeat delete removes worker and process registry entries in real redis`() {
+    val redisTemplate = newStringRedisTemplate()
+    flushRedis(redisTemplate)
+
+    val heartbeatStore = newHeartbeatStore(redisTemplate)
+    val heartbeat =
+      WorkerHeartbeat(
+        workerId = WorkerId("worker-1"),
+        processId = ProcessId("process-1"),
+        queues = setOf("default"),
+        recordedAt = Instant.parse("2026-03-15T11:00:10Z"),
+        expiresAt = Instant.parse("2026-03-15T11:00:40Z"),
+      )
+
+    heartbeatStore.save(heartbeat)
+    heartbeatStore.delete(heartbeat.workerId)
+
+    assertNull(heartbeatStore.find(heartbeat.workerId))
+    assertEquals(emptySet(), heartbeatStore.registeredWorkerIds())
+    assertEquals(emptySet(), heartbeatStore.registeredProcessIds())
   }
 }

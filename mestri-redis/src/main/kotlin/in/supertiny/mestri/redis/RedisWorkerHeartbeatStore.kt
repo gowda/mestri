@@ -51,6 +51,13 @@ class RedisWorkerHeartbeatStore(
 
   fun findAll(): List<WorkerHeartbeat> = registeredWorkerIds().mapNotNull(::find)
 
+  fun delete(workerId: WorkerId) {
+    val heartbeat = find(workerId)
+    hashAccessor.delete(RedisKeyspace.workerHeartbeat(workerId))
+    setAccessor.remove(RedisKeyspace.workerRegistry(), workerId.value)
+    heartbeat?.let { setAccessor.remove(RedisKeyspace.processRegistry(), it.processId.value) }
+  }
+
   private fun requireField(
     fields: Map<String, String>,
     name: String,

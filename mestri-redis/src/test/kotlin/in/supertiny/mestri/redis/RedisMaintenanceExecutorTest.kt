@@ -12,11 +12,13 @@ import `in`.supertiny.mestri.core.runtime.CleanupStaleWorker
 import `in`.supertiny.mestri.core.runtime.MaintenancePlan
 import `in`.supertiny.mestri.core.runtime.RequeueExpiredLease
 import `in`.supertiny.mestri.core.runtime.RetryBackoffCalculator
+import `in`.supertiny.mestri.core.runtime.WorkerHeartbeat
 import `in`.supertiny.mestri.core.runtime.WorkerId
 import `in`.supertiny.mestri.core.serialization.JobPayload
 import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -40,6 +42,7 @@ class RedisMaintenanceExecutorTest {
         listAccessor = listAccessor,
         scheduledJobStore = RedisScheduledJobStore(jobRecordStore, sortedSetAccessor),
         leaseStore = leaseStore,
+        heartbeatStore = RedisWorkerHeartbeatStore(hashAccessor, setAccessor),
         backoffCalculator = RetryBackoffCalculator(),
       )
     val payload = samplePayload()
@@ -97,6 +100,7 @@ class RedisMaintenanceExecutorTest {
         listAccessor = listAccessor,
         scheduledJobStore = RedisScheduledJobStore(jobRecordStore, sortedSetAccessor),
         leaseStore = leaseStore,
+        heartbeatStore = RedisWorkerHeartbeatStore(hashAccessor, setAccessor),
       )
     val payload =
       samplePayload(
@@ -138,6 +142,57 @@ class RedisMaintenanceExecutorTest {
     )
     assertEquals(emptyList(), sortedSetAccessor.valuesFor(RedisKeyspace.retry()))
     assertNull(leaseStore.find(payload.jobId))
+  }
+
+  @Test
+  fun `stale worker cleanup removes heartbeat and registry entries`() {
+    val hashAccessor = InMemoryRedisHashAccessor()
+    val setAccessor = InMemoryRedisSetAccessor()
+    val heartbeatStore = RedisWorkerHeartbeatStore(hashAccessor, setAccessor)
+    val executor =
+      RedisMaintenanceExecutor(
+        jobRecordStore =
+          RedisJobRecordStore(
+            hashAccessor = hashAccessor,
+            mapper = RedisJobRecordMapper(JacksonJobPayloadSerializer()),
+          ),
+        listAccessor = InMemoryRedisListAccessor(),
+        scheduledJobStore =
+          RedisScheduledJobStore(
+            RedisJobRecordStore(
+              hashAccessor = hashAccessor,
+              mapper = RedisJobRecordMapper(JacksonJobPayloadSerializer()),
+            ),
+            InMemoryRedisSortedSetAccessor(),
+          ),
+        leaseStore = RedisJobLeaseStore(hashAccessor, setAccessor),
+        heartbeatStore = heartbeatStore,
+      )
+    val heartbeat =
+      WorkerHeartbeat(
+        workerId = WorkerId("worker-1"),
+        processId = `in`.supertiny.mestri.core.runtime.ProcessId("process-1"),
+        queues = setOf("billing"),
+        recordedAt = Instant.parse("2026-03-15T12:00:00Z"),
+        expiresAt = Instant.parse("2026-03-15T12:05:00Z"),
+      )
+
+    heartbeatStore.save(heartbeat)
+    assertNotNull(heartbeatStore.find(heartbeat.workerId))
+
+    val report =
+      executor.execute(
+        MaintenancePlan(
+          createdAt = Instant.parse("2026-03-15T12:10:00Z"),
+          actions = listOf(CleanupStaleWorker(heartbeat.workerId)),
+        ),
+        now = Instant.parse("2026-03-15T12:10:00Z"),
+      )
+
+    assertEquals(listOf(CleanupStaleWorker(WorkerId("worker-1"))), report.completedActions)
+    assertNull(heartbeatStore.find(heartbeat.workerId))
+    assertEquals(emptySet(), heartbeatStore.registeredWorkerIds())
+    assertEquals(emptySet(), heartbeatStore.registeredProcessIds())
   }
 
   private fun samplePayload(
