@@ -48,7 +48,9 @@ class WorkerExecutionCoordinator(
   }
 
   fun runNext(): WorkerCycleResult {
-    if (lifecycleState == WorkerLifecycleState.STOPPED || (shutdownRequested && inFlightReservations == 0)) {
+    if (lifecycleState == WorkerLifecycleState.STOPPED ||
+      (shutdownRequested && inFlightReservations == 0)
+    ) {
       lifecycleState = WorkerLifecycleState.STOPPED
       return WorkerCycleResult(
         outcome = WorkerCycleOutcome.STOPPED,

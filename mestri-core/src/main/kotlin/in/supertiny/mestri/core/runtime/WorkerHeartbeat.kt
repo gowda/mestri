@@ -11,8 +11,12 @@ data class WorkerHeartbeat(
   val expiresAt: Instant,
 ) {
   init {
-    require(queues.none { it.isBlank() }) { "Worker heartbeat queues must not contain blank names." }
-    require(expiresAt.isAfter(recordedAt)) { "Worker heartbeat expiresAt must be after recordedAt." }
+    require(
+      queues.none { it.isBlank() },
+    ) { "Worker heartbeat queues must not contain blank names." }
+    require(
+      expiresAt.isAfter(recordedAt),
+    ) { "Worker heartbeat expiresAt must be after recordedAt." }
   }
 
   fun isStale(at: Instant): Boolean = !expiresAt.isAfter(at)

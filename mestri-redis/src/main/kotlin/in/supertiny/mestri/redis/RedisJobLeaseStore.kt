@@ -8,7 +8,6 @@ import java.time.Instant
 class RedisJobLeaseStore(
   private val hashAccessor: RedisHashAccessor,
 ) {
-
   fun save(lease: JobLease) {
     hashAccessor.putAll(
       RedisKeyspace.workerLease(lease.jobId),
@@ -37,7 +36,10 @@ class RedisJobLeaseStore(
     hashAccessor.delete(RedisKeyspace.workerLease(jobId))
   }
 
-  private fun requireField(fields: Map<String, String>, name: String): String =
+  private fun requireField(
+    fields: Map<String, String>,
+    name: String,
+  ): String =
     fields[name]?.takeIf { it.isNotBlank() }
       ?: throw IllegalArgumentException("Redis lease field '$name' is required.")
 

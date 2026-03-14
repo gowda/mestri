@@ -14,7 +14,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
 class RedisImmediateJobEnqueuerIntegrationTest : RedisIntegrationSupport() {
-
   @Test
   fun `immediate enqueue writes queue list entry and queued job record to redis`() {
     val redisTemplate = newStringRedisTemplate()

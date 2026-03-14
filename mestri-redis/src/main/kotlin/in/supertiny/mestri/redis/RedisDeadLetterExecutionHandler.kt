@@ -13,7 +13,6 @@ class RedisDeadLetterExecutionHandler(
   private val leaseStore: RedisJobLeaseStore,
   private val clock: () -> Instant = { Instant.now() },
 ) : JobDeadLetterHandler {
-
   override fun handle(
     reservation: JobReservation,
     result: ServerExecutionResult,
@@ -23,7 +22,9 @@ class RedisDeadLetterExecutionHandler(
       "Dead-letter execution handling requires a positive attempt."
     }
     val retryPolicy = reservation.payload.retryPolicy
-    val isExhaustedRetry = result.outcome == ServerExecutionOutcome.RETRYABLE_FAILURE && attempt >= retryPolicy.maxAttempts
+    val isExhaustedRetry =
+      result.outcome == ServerExecutionOutcome.RETRYABLE_FAILURE &&
+        attempt >= retryPolicy.maxAttempts
     require(result.outcome == ServerExecutionOutcome.TERMINAL_FAILURE || isExhaustedRetry) {
       "Dead-letter execution handling requires a TERMINAL_FAILURE or exhausted retryable failure."
     }

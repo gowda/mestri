@@ -10,7 +10,6 @@ import java.time.Instant
 class RedisJobRecordMapper(
   private val payloadSerializer: JobPayloadSerializer,
 ) {
-
   fun toHash(record: RedisJobRecord): Map<String, String> {
     val serializedPayload = payloadSerializer.serialize(record.payload)
     return mapOf(
@@ -32,7 +31,7 @@ class RedisJobRecordMapper(
         SerializedPayload(
           format = PayloadFormat.valueOf(requireField(fields, FIELD_PAYLOAD_FORMAT)),
           content = requireField(fields, FIELD_PAYLOAD),
-        )
+        ),
       )
 
     return RedisJobRecord(
@@ -44,7 +43,10 @@ class RedisJobRecordMapper(
     )
   }
 
-  private fun requireField(fields: Map<String, String>, name: String): String =
+  private fun requireField(
+    fields: Map<String, String>,
+    name: String,
+  ): String =
     fields[name]?.takeIf { it.isNotBlank() }
       ?: throw IllegalArgumentException("Redis job record field '$name' is required.")
 

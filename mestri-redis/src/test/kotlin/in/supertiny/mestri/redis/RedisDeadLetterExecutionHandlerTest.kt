@@ -24,7 +24,6 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 class RedisDeadLetterExecutionHandlerTest {
-
   @Test
   fun `terminal execution moves job to dead bucket and clears lease`() {
     val hashAccessor = InMemoryRedisHashAccessor()
@@ -73,8 +72,14 @@ class RedisDeadLetterExecutionHandlerTest {
     assertNotNull(storedRecord)
     assertEquals(JobBucket.DEAD, storedRecord.bucket)
     assertEquals("trace-1", storedRecord.payload.metadata["traceId"])
-    assertEquals("fatal outage", storedRecord.payload.metadata[RedisDeadLetterExecutionHandler.METADATA_LAST_ERROR_MESSAGE])
-    assertEquals("3", storedRecord.payload.metadata[RedisDeadLetterExecutionHandler.METADATA_FINAL_ATTEMPT])
+    assertEquals(
+      "fatal outage",
+      storedRecord.payload.metadata[RedisDeadLetterExecutionHandler.METADATA_LAST_ERROR_MESSAGE],
+    )
+    assertEquals(
+      "3",
+      storedRecord.payload.metadata[RedisDeadLetterExecutionHandler.METADATA_FINAL_ATTEMPT],
+    )
     assertNull(leaseStore.find(reservation.payload.jobId))
   }
 
@@ -95,7 +100,16 @@ class RedisDeadLetterExecutionHandlerTest {
         leaseStore = leaseStore,
         clock = { Instant.parse("2026-03-15T12:10:00Z") },
       )
-    val reservation = sampleReservation(retryPolicy = RetryPolicy(maxAttempts = 2, initialDelay = 5.seconds, maxDelay = 2.minutes, useJitter = false))
+    val reservation =
+      sampleReservation(
+        retryPolicy =
+          RetryPolicy(
+            maxAttempts = 2,
+            initialDelay = 5.seconds,
+            maxDelay = 2.minutes,
+            useJitter = false,
+          ),
+      )
 
     jobRecordStore.save(
       RedisJobRecord(
@@ -150,7 +164,11 @@ class RedisDeadLetterExecutionHandlerTest {
       handler.handle(
         reservation = sampleReservation(),
         attempt = 1,
-        result = ServerExecutionResult(outcome = ServerExecutionOutcome.RETRYABLE_FAILURE, errorMessage = "try again"),
+        result =
+          ServerExecutionResult(
+            outcome = ServerExecutionOutcome.RETRYABLE_FAILURE,
+            errorMessage = "try again",
+          ),
       )
     }
   }
@@ -202,7 +220,10 @@ class RedisDeadLetterExecutionHandlerTest {
 
     override fun entries(key: String): Map<String, String> = data[key].orEmpty()
 
-    override fun putAll(key: String, fields: Map<String, String>) {
+    override fun putAll(
+      key: String,
+      fields: Map<String, String>,
+    ) {
       data[key] = fields.toMap()
     }
 
@@ -212,6 +233,10 @@ class RedisDeadLetterExecutionHandlerTest {
   }
 
   private class InMemoryRedisSortedSetAccessor : RedisSortedSetAccessor {
-    override fun add(key: String, value: String, score: Double) = Unit
+    override fun add(
+      key: String,
+      value: String,
+      score: Double,
+    ) = Unit
   }
 }

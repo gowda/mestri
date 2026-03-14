@@ -17,7 +17,9 @@ data class JobPayload(
   init {
     require(labels.none { it.isBlank() }) { "Job payload labels must not be blank." }
     require(metadata.keys.none { it.isBlank() }) { "Job payload metadata keys must not be blank." }
-    require(metadata.values.none { it.isBlank() }) { "Job payload metadata values must not be blank." }
+    require(
+      metadata.values.none { it.isBlank() },
+    ) { "Job payload metadata values must not be blank." }
     require(deduplicationKey == null || deduplicationKey.isNotBlank()) {
       "Job payload deduplicationKey must not be blank when set."
     }

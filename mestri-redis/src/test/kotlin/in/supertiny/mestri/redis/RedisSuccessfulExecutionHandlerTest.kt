@@ -21,7 +21,6 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 class RedisSuccessfulExecutionHandlerTest {
-
   @Test
   fun `successful execution moves job to succeeded and clears lease`() {
     val hashAccessor = InMemoryRedisHashAccessor()
@@ -131,7 +130,10 @@ class RedisSuccessfulExecutionHandlerTest {
 
     override fun entries(key: String): Map<String, String> = data[key].orEmpty()
 
-    override fun putAll(key: String, fields: Map<String, String>) {
+    override fun putAll(
+      key: String,
+      fields: Map<String, String>,
+    ) {
       data[key] = fields.toMap()
     }
 
@@ -141,6 +143,10 @@ class RedisSuccessfulExecutionHandlerTest {
   }
 
   private class InMemoryRedisSortedSetAccessor : RedisSortedSetAccessor {
-    override fun add(key: String, value: String, score: Double) = Unit
+    override fun add(
+      key: String,
+      value: String,
+      score: Double,
+    ) = Unit
   }
 }

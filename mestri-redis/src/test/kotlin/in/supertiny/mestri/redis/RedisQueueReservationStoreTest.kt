@@ -17,7 +17,6 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 class RedisQueueReservationStoreTest {
-
   @Test
   fun `reserve moves queued job to running with lease`() {
     val redis = InMemoryRedis()
@@ -105,13 +104,18 @@ class RedisQueueReservationStoreTest {
       queue = QueueName("billing"),
     )
 
-  private class InMemoryRedis : RedisHashAccessor, RedisQueueAccessor {
+  private class InMemoryRedis :
+    RedisHashAccessor,
+    RedisQueueAccessor {
     private val hashes = mutableMapOf<String, Map<String, String>>()
     private val lists = mutableMapOf<String, MutableList<String>>()
 
     override fun entries(key: String): Map<String, String> = hashes[key].orEmpty()
 
-    override fun putAll(key: String, fields: Map<String, String>) {
+    override fun putAll(
+      key: String,
+      fields: Map<String, String>,
+    ) {
       hashes[key] = fields.toMap()
     }
 
@@ -119,7 +123,10 @@ class RedisQueueReservationStoreTest {
       hashes.remove(key)
     }
 
-    override fun rightPush(key: String, value: String) {
+    override fun rightPush(
+      key: String,
+      value: String,
+    ) {
       lists.getOrPut(key) { mutableListOf() }.add(value)
     }
 

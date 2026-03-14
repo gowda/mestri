@@ -14,7 +14,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
 class RedisImmediateJobEnqueuerTest {
-
   @Test
   fun `enqueue persists queued job record and appends job id to queue`() {
     val hashAccessor = InMemoryRedisHashAccessor()
@@ -71,7 +70,10 @@ class RedisImmediateJobEnqueuerTest {
 
     override fun entries(key: String): Map<String, String> = data[key].orEmpty()
 
-    override fun putAll(key: String, fields: Map<String, String>) {
+    override fun putAll(
+      key: String,
+      fields: Map<String, String>,
+    ) {
       data[key] = fields.toMap()
     }
 
@@ -83,7 +85,10 @@ class RedisImmediateJobEnqueuerTest {
   private class InMemoryRedisListAccessor : RedisListAccessor {
     private val data = mutableMapOf<String, MutableList<String>>()
 
-    override fun rightPush(key: String, value: String) {
+    override fun rightPush(
+      key: String,
+      value: String,
+    ) {
       data.getOrPut(key) { mutableListOf() }.add(value)
     }
 

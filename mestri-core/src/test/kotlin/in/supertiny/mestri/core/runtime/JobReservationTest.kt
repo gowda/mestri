@@ -12,7 +12,6 @@ import kotlin.test.Test
 import kotlin.test.assertFailsWith
 
 class JobReservationTest {
-
   @Test
   fun `job reservation rejects mismatched reserved time`() {
     assertFailsWith<IllegalArgumentException> {

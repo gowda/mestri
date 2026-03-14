@@ -11,7 +11,6 @@ class ServerExecutionPipeline(
   private val middlewares: List<ServerMiddleware>,
   private val handlerInvoker: JobHandlerInvoker,
 ) {
-
   fun execute(
     reservation: JobReservation,
     attempt: Int = 1,
@@ -44,7 +43,8 @@ class ServerExecutionPipeline(
       ServerExecutionResult(
         outcome = ServerExecutionOutcome.TERMINAL_FAILURE,
         metadata = request.metadata,
-        errorMessage = exception.message ?: exception::class.qualifiedName ?: "Handler invocation failed",
+        errorMessage =
+          exception.message ?: exception::class.qualifiedName ?: "Handler invocation failed",
       )
     }
   }

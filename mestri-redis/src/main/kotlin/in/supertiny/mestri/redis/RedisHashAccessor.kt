@@ -5,11 +5,17 @@ fun interface RedisHashLookup {
 }
 
 fun interface RedisHashWriter {
-  fun putAll(key: String, fields: Map<String, String>)
+  fun putAll(
+    key: String,
+    fields: Map<String, String>,
+  )
 }
 
 fun interface RedisHashDeleter {
   fun delete(key: String)
 }
 
-interface RedisHashAccessor : RedisHashLookup, RedisHashWriter, RedisHashDeleter
+interface RedisHashAccessor :
+  RedisHashLookup,
+  RedisHashWriter,
+  RedisHashDeleter

@@ -13,7 +13,9 @@ data class RetentionPolicy(
   init {
     require(global.isPositive()) { "Global retention must be positive." }
     listOf(succeeded, deleted, dead, retry).forEach { duration ->
-      require(duration == null || duration.isPositive()) { "Bucket retention must be positive when set." }
+      require(
+        duration == null || duration.isPositive(),
+      ) { "Bucket retention must be positive when set." }
     }
   }
 

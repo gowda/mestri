@@ -6,7 +6,6 @@ class RedisJobRecordStore(
   private val hashAccessor: RedisHashAccessor,
   private val mapper: RedisJobRecordMapper,
 ) {
-
   fun save(record: RedisJobRecord) {
     hashAccessor.putAll(RedisKeyspace.job(record.jobId), mapper.toHash(record))
   }

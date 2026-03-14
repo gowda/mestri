@@ -11,7 +11,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class ServerMiddlewareChainTest {
-
   @Test
   fun `server middleware chain applies middleware in order`() {
     val callOrder = mutableListOf<String>()
@@ -23,7 +22,7 @@ class ServerMiddlewareChainTest {
               callOrder += "first-before"
               val result =
                 next.proceed(
-                  request.copy(metadata = request.metadata + ("traceId" to "trace-1"))
+                  request.copy(metadata = request.metadata + ("traceId" to "trace-1")),
                 )
               callOrder += "first-after"
               result
@@ -67,7 +66,7 @@ class ServerMiddlewareChainTest {
                 outcome = ServerExecutionOutcome.TERMINAL_FAILURE,
                 errorMessage = "blocked by middleware",
               )
-            }
+            },
           ),
         terminal =
           ServerChain {

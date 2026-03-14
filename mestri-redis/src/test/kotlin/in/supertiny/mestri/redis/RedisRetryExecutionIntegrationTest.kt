@@ -23,7 +23,6 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 class RedisRetryExecutionIntegrationTest : RedisIntegrationSupport() {
-
   @Test
   fun `retryable execution persists retry record and removes lease in real redis`() {
     val redisTemplate = newStringRedisTemplate()
@@ -60,11 +59,12 @@ class RedisRetryExecutionIntegrationTest : RedisIntegrationSupport() {
 
     enqueuer.enqueue(payload)
     val reservation =
-      reservationStore.reserve(
-        queue = payload.queue,
-        workerId = WorkerId("worker-1"),
-        leaseDuration = Duration.ofMinutes(5),
-      )?.reservation
+      reservationStore
+        .reserve(
+          queue = payload.queue,
+          workerId = WorkerId("worker-1"),
+          leaseDuration = Duration.ofMinutes(5),
+        )?.reservation
 
     assertNotNull(reservation)
 
@@ -90,7 +90,10 @@ class RedisRetryExecutionIntegrationTest : RedisIntegrationSupport() {
     assertNotNull(updatedRecord)
     assertEquals(JobBucket.RETRY, updatedRecord.bucket)
     assertEquals("trace-1", updatedRecord.payload.metadata["traceId"])
-    assertEquals("temporary outage", updatedRecord.payload.metadata[RedisRetryExecutionHandler.METADATA_LAST_ERROR_MESSAGE])
+    assertEquals(
+      "temporary outage",
+      updatedRecord.payload.metadata[RedisRetryExecutionHandler.METADATA_LAST_ERROR_MESSAGE],
+    )
     assertNull(lease)
     assertEquals(Instant.parse("2026-03-15T12:02:05Z").toEpochMilli().toDouble(), retryScore)
   }

@@ -22,7 +22,6 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 class RedisDeadLetterExecutionIntegrationTest : RedisIntegrationSupport() {
-
   @Test
   fun `terminal execution persists dead record and removes lease in real redis`() {
     val redisTemplate = newStringRedisTemplate()
@@ -62,11 +61,12 @@ class RedisDeadLetterExecutionIntegrationTest : RedisIntegrationSupport() {
 
     enqueuer.enqueue(payload)
     val reservation =
-      reservationStore.reserve(
-        queue = payload.queue,
-        workerId = WorkerId("worker-1"),
-        leaseDuration = Duration.ofMinutes(5),
-      )?.reservation
+      reservationStore
+        .reserve(
+          queue = payload.queue,
+          workerId = WorkerId("worker-1"),
+          leaseDuration = Duration.ofMinutes(5),
+        )?.reservation
 
     assertNotNull(reservation)
 
@@ -89,7 +89,10 @@ class RedisDeadLetterExecutionIntegrationTest : RedisIntegrationSupport() {
     assertNotNull(updatedRecord)
     assertEquals(JobBucket.DEAD, updatedRecord.bucket)
     assertEquals("trace-1", updatedRecord.payload.metadata["traceId"])
-    assertEquals("fatal outage", updatedRecord.payload.metadata[RedisDeadLetterExecutionHandler.METADATA_LAST_ERROR_MESSAGE])
+    assertEquals(
+      "fatal outage",
+      updatedRecord.payload.metadata[RedisDeadLetterExecutionHandler.METADATA_LAST_ERROR_MESSAGE],
+    )
     assertNull(lease)
     assertEquals(Instant.parse("2026-03-15T12:02:00Z").toEpochMilli().toDouble(), deadScore)
   }

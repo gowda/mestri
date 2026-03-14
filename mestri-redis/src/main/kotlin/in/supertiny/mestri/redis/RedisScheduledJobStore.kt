@@ -9,12 +9,27 @@ class RedisScheduledJobStore(
   private val sortedSetAccessor: RedisSortedSetAccessor,
   private val clock: () -> Instant = { Instant.now() },
 ) {
+  fun persistScheduled(
+    payload: JobPayload,
+    dueAt: Instant,
+  ): RedisScheduledPersistenceResult =
+    persist(
+      bucket = JobBucket.SCHEDULED,
+      bucketKey = RedisKeyspace.scheduled(),
+      payload = payload,
+      dueAt = dueAt,
+    )
 
-  fun persistScheduled(payload: JobPayload, dueAt: Instant): RedisScheduledPersistenceResult =
-    persist(bucket = JobBucket.SCHEDULED, bucketKey = RedisKeyspace.scheduled(), payload = payload, dueAt = dueAt)
-
-  fun persistRetry(payload: JobPayload, dueAt: Instant): RedisScheduledPersistenceResult =
-    persist(bucket = JobBucket.RETRY, bucketKey = RedisKeyspace.retry(), payload = payload, dueAt = dueAt)
+  fun persistRetry(
+    payload: JobPayload,
+    dueAt: Instant,
+  ): RedisScheduledPersistenceResult =
+    persist(
+      bucket = JobBucket.RETRY,
+      bucketKey = RedisKeyspace.retry(),
+      payload = payload,
+      dueAt = dueAt,
+    )
 
   private fun persist(
     bucket: JobBucket,

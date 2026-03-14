@@ -14,7 +14,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
 class RedisTerminalJobStoreTest {
-
   @Test
   fun `persist succeeded stores terminal record and zset marker`() {
     val hashAccessor = InMemoryRedisHashAccessor()
@@ -34,14 +33,16 @@ class RedisTerminalJobStoreTest {
     val result = store.persistSucceeded(payload, recordedAt)
     val storedRecord =
       RedisJobRecordStore(
-          hashAccessor = hashAccessor,
-          mapper = RedisJobRecordMapper(JacksonJobPayloadSerializer()),
-        )
-        .find(payload.jobId)
+        hashAccessor = hashAccessor,
+        mapper = RedisJobRecordMapper(JacksonJobPayloadSerializer()),
+      ).find(payload.jobId)
 
     assertEquals(JobBucket.SUCCEEDED, result.bucket)
     assertEquals("mestri:succeeded", result.bucketKey)
-    assertEquals(listOf(ScoredValue(payload.jobId.value, recordedAt.toEpochMilli().toDouble())), sortedSetAccessor.valuesFor(result.bucketKey))
+    assertEquals(
+      listOf(ScoredValue(payload.jobId.value, recordedAt.toEpochMilli().toDouble())),
+      sortedSetAccessor.valuesFor(result.bucketKey),
+    )
 
     assertNotNull(storedRecord)
     assertEquals(JobBucket.SUCCEEDED, storedRecord.bucket)
@@ -67,7 +68,10 @@ class RedisTerminalJobStoreTest {
 
     assertEquals(JobBucket.DELETED, result.bucket)
     assertEquals("mestri:deleted", result.bucketKey)
-    assertEquals(listOf(ScoredValue(payload.jobId.value, recordedAt.toEpochMilli().toDouble())), sortedSetAccessor.valuesFor(result.bucketKey))
+    assertEquals(
+      listOf(ScoredValue(payload.jobId.value, recordedAt.toEpochMilli().toDouble())),
+      sortedSetAccessor.valuesFor(result.bucketKey),
+    )
   }
 
   private fun samplePayload(): JobPayload =
@@ -95,7 +99,10 @@ class RedisTerminalJobStoreTest {
 
     override fun entries(key: String): Map<String, String> = data[key].orEmpty()
 
-    override fun putAll(key: String, fields: Map<String, String>) {
+    override fun putAll(
+      key: String,
+      fields: Map<String, String>,
+    ) {
       data[key] = fields.toMap()
     }
 
@@ -112,7 +119,11 @@ class RedisTerminalJobStoreTest {
   private class InMemoryRedisSortedSetAccessor : RedisSortedSetAccessor {
     private val data = mutableMapOf<String, MutableList<ScoredValue>>()
 
-    override fun add(key: String, value: String, score: Double) {
+    override fun add(
+      key: String,
+      value: String,
+      score: Double,
+    ) {
       data.getOrPut(key) { mutableListOf() }.add(ScoredValue(value, score))
     }
 

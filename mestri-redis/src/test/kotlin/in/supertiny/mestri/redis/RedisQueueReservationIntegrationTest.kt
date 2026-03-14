@@ -16,7 +16,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
 class RedisQueueReservationIntegrationTest : RedisIntegrationSupport() {
-
   @Test
   fun `reservation pops queued job and creates running lease in real redis`() {
     val redisTemplate = newStringRedisTemplate()

@@ -15,7 +15,6 @@ class RedisQueueReservationStore(
   private val leaseStore: RedisJobLeaseStore,
   private val clock: () -> Instant = { Instant.now() },
 ) {
-
   fun reserve(
     queue: QueueName,
     workerId: WorkerId,

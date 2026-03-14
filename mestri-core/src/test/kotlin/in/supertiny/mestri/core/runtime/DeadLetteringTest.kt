@@ -8,7 +8,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class DeadLetteringTest {
-
   @Test
   fun `dead lettering defaults to dead bucket`() {
     val deadLettering =

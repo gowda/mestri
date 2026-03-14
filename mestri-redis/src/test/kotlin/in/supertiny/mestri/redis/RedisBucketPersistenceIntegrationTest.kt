@@ -14,7 +14,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
 class RedisBucketPersistenceIntegrationTest : RedisIntegrationSupport() {
-
   @Test
   fun `scheduled and retry persistence write sorted set markers and job buckets`() {
     val redisTemplate = newStringRedisTemplate()

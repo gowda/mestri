@@ -8,7 +8,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class SuccessfulExecutionTest {
-
   @Test
   fun `successful execution defaults to succeeded bucket`() {
     val execution =

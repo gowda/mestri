@@ -10,7 +10,6 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 class RetryBackoffCalculatorTest {
-
   @Test
   fun `retry backoff grows exponentially without jitter`() {
     val calculator = RetryBackoffCalculator()

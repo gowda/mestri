@@ -9,12 +9,27 @@ class RedisTerminalJobStore(
   private val sortedSetAccessor: RedisSortedSetAccessor,
   private val clock: () -> Instant = { Instant.now() },
 ) {
+  fun persistSucceeded(
+    payload: JobPayload,
+    recordedAt: Instant = clock(),
+  ): RedisTerminalPersistenceResult =
+    persist(
+      bucket = JobBucket.SUCCEEDED,
+      bucketKey = RedisKeyspace.succeeded(),
+      payload = payload,
+      recordedAt = recordedAt,
+    )
 
-  fun persistSucceeded(payload: JobPayload, recordedAt: Instant = clock()): RedisTerminalPersistenceResult =
-    persist(bucket = JobBucket.SUCCEEDED, bucketKey = RedisKeyspace.succeeded(), payload = payload, recordedAt = recordedAt)
-
-  fun persistDeleted(payload: JobPayload, recordedAt: Instant = clock()): RedisTerminalPersistenceResult =
-    persist(bucket = JobBucket.DELETED, bucketKey = RedisKeyspace.deleted(), payload = payload, recordedAt = recordedAt)
+  fun persistDeleted(
+    payload: JobPayload,
+    recordedAt: Instant = clock(),
+  ): RedisTerminalPersistenceResult =
+    persist(
+      bucket = JobBucket.DELETED,
+      bucketKey = RedisKeyspace.deleted(),
+      payload = payload,
+      recordedAt = recordedAt,
+    )
 
   fun persist(
     bucket: JobBucket,

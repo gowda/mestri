@@ -15,7 +15,6 @@ class RedisRetryExecutionHandler(
   private val backoffCalculator: RetryBackoffCalculator = RetryBackoffCalculator(),
   private val clock: () -> Instant = { Instant.now() },
 ) : JobRetryHandler {
-
   override fun handle(
     reservation: JobReservation,
     result: ServerExecutionResult,

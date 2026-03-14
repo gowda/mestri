@@ -12,7 +12,6 @@ class RedisSuccessfulExecutionHandler(
   private val leaseStore: RedisJobLeaseStore,
   private val clock: () -> Instant = { Instant.now() },
 ) : JobSuccessHandler {
-
   override fun handle(
     reservation: JobReservation,
     result: ServerExecutionResult,

@@ -9,7 +9,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class RedisKeyspaceTest {
-
   @Test
   fun `queue key uses queue namespace`() {
     assertEquals("mestri:queue:critical", RedisKeyspace.queue(QueueName("critical")))

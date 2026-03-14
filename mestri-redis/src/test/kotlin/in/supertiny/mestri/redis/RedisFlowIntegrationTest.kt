@@ -18,7 +18,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
 class RedisFlowIntegrationTest {
-
   @Test
   fun `immediate enqueue writes queue key and queued job record`() {
     val redis = InMemoryRedis()
@@ -57,11 +56,18 @@ class RedisFlowIntegrationTest {
     store.persistRetry(retryPayload, Instant.parse("2026-03-15T10:10:00Z"))
 
     assertEquals(
-      listOf(ScoredValue("job-scheduled", Instant.parse("2026-03-15T10:05:00Z").toEpochMilli().toDouble())),
+      listOf(
+        ScoredValue(
+          "job-scheduled",
+          Instant.parse("2026-03-15T10:05:00Z").toEpochMilli().toDouble(),
+        ),
+      ),
       redis.sortedSetValues("mestri:scheduled"),
     )
     assertEquals(
-      listOf(ScoredValue("job-retry", Instant.parse("2026-03-15T10:10:00Z").toEpochMilli().toDouble())),
+      listOf(
+        ScoredValue("job-retry", Instant.parse("2026-03-15T10:10:00Z").toEpochMilli().toDouble()),
+      ),
       redis.sortedSetValues("mestri:retry"),
     )
     assertEquals(JobBucket.SCHEDULED, recordStore.find(JobId("job-scheduled"))?.bucket)
@@ -80,7 +86,7 @@ class RedisFlowIntegrationTest {
         workerId = WorkerId("worker-1"),
         acquiredAt = Instant.parse("2026-03-15T10:00:00Z"),
         expiresAt = Instant.parse("2026-03-15T10:05:00Z"),
-      )
+      ),
     )
     heartbeatStore.save(
       WorkerHeartbeat(
@@ -89,7 +95,7 @@ class RedisFlowIntegrationTest {
         queues = setOf("billing"),
         recordedAt = Instant.parse("2026-03-15T10:00:10Z"),
         expiresAt = Instant.parse("2026-03-15T10:00:40Z"),
-      )
+      ),
     )
 
     assertNotNull(leaseStore.find(JobId("job-running")))
@@ -107,15 +113,25 @@ class RedisFlowIntegrationTest {
         sortedSetAccessor = redis,
       )
 
-    terminalStore.persistSucceeded(samplePayload(jobId = "job-done"), Instant.parse("2026-03-15T10:15:00Z"))
-    terminalStore.persistDeleted(samplePayload(jobId = "job-deleted"), Instant.parse("2026-03-15T10:20:00Z"))
+    terminalStore.persistSucceeded(
+      samplePayload(jobId = "job-done"),
+      Instant.parse("2026-03-15T10:15:00Z"),
+    )
+    terminalStore.persistDeleted(
+      samplePayload(jobId = "job-deleted"),
+      Instant.parse("2026-03-15T10:20:00Z"),
+    )
 
     assertEquals(
-      listOf(ScoredValue("job-done", Instant.parse("2026-03-15T10:15:00Z").toEpochMilli().toDouble())),
+      listOf(
+        ScoredValue("job-done", Instant.parse("2026-03-15T10:15:00Z").toEpochMilli().toDouble()),
+      ),
       redis.sortedSetValues("mestri:succeeded"),
     )
     assertEquals(
-      listOf(ScoredValue("job-deleted", Instant.parse("2026-03-15T10:20:00Z").toEpochMilli().toDouble())),
+      listOf(
+        ScoredValue("job-deleted", Instant.parse("2026-03-15T10:20:00Z").toEpochMilli().toDouble()),
+      ),
       redis.sortedSetValues("mestri:deleted"),
     )
     assertEquals(JobBucket.SUCCEEDED, recordStore.find(JobId("job-done"))?.bucket)
@@ -153,7 +169,11 @@ class RedisFlowIntegrationTest {
     val score: Double,
   )
 
-  private class InMemoryRedis : RedisHashAccessor, RedisListAccessor, RedisSortedSetAccessor, RedisSetAccessor {
+  private class InMemoryRedis :
+    RedisHashAccessor,
+    RedisListAccessor,
+    RedisSortedSetAccessor,
+    RedisSetAccessor {
     private val hashes = mutableMapOf<String, Map<String, String>>()
     private val lists = mutableMapOf<String, MutableList<String>>()
     private val sortedSets = mutableMapOf<String, MutableList<ScoredValue>>()
@@ -161,7 +181,10 @@ class RedisFlowIntegrationTest {
 
     override fun entries(key: String): Map<String, String> = hashes[key].orEmpty()
 
-    override fun putAll(key: String, fields: Map<String, String>) {
+    override fun putAll(
+      key: String,
+      fields: Map<String, String>,
+    ) {
       hashes[key] = fields.toMap()
     }
 
@@ -169,15 +192,25 @@ class RedisFlowIntegrationTest {
       hashes.remove(key)
     }
 
-    override fun rightPush(key: String, value: String) {
+    override fun rightPush(
+      key: String,
+      value: String,
+    ) {
       lists.getOrPut(key) { mutableListOf() }.add(value)
     }
 
-    override fun add(key: String, value: String, score: Double) {
+    override fun add(
+      key: String,
+      value: String,
+      score: Double,
+    ) {
       sortedSets.getOrPut(key) { mutableListOf() }.add(ScoredValue(value, score))
     }
 
-    override fun add(key: String, value: String) {
+    override fun add(
+      key: String,
+      value: String,
+    ) {
       sets.getOrPut(key) { linkedSetOf() }.add(value)
     }
 

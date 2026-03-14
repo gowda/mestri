@@ -19,7 +19,6 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 class RedisSuccessfulExecutionIntegrationTest : RedisIntegrationSupport() {
-
   @Test
   fun `successful execution persists succeeded record and removes lease in real redis`() {
     val redisTemplate = newStringRedisTemplate()
@@ -54,11 +53,12 @@ class RedisSuccessfulExecutionIntegrationTest : RedisIntegrationSupport() {
 
     enqueuer.enqueue(payload)
     val reservation =
-      reservationStore.reserve(
-        queue = payload.queue,
-        workerId = WorkerId("worker-1"),
-        leaseDuration = Duration.ofMinutes(5),
-      )?.reservation
+      reservationStore
+        .reserve(
+          queue = payload.queue,
+          workerId = WorkerId("worker-1"),
+          leaseDuration = Duration.ofMinutes(5),
+        )?.reservation
 
     assertNotNull(reservation)
 

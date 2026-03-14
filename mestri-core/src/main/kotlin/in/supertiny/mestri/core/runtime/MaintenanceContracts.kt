@@ -19,9 +19,15 @@ data class MaintenanceReport(
 )
 
 fun interface MaintenancePlanner {
-  fun plan(snapshot: MaintenanceSnapshot, now: Instant): MaintenancePlan
+  fun plan(
+    snapshot: MaintenanceSnapshot,
+    now: Instant,
+  ): MaintenancePlan
 }
 
 fun interface MaintenanceExecutor {
-  fun execute(plan: MaintenancePlan, now: Instant): MaintenanceReport
+  fun execute(
+    plan: MaintenancePlan,
+    now: Instant,
+  ): MaintenanceReport
 }

@@ -9,7 +9,6 @@ class RedisImmediateJobEnqueuer(
   private val listAccessor: RedisListAccessor,
   private val clock: () -> Instant = { Instant.now() },
 ) {
-
   fun enqueue(payload: JobPayload): RedisImmediateEnqueueResult {
     val now = clock()
     val record =

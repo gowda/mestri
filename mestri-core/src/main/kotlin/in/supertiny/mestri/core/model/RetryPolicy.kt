@@ -14,7 +14,9 @@ data class RetryPolicy(
   init {
     require(maxAttempts >= 0) { "Retry maxAttempts must be zero or greater." }
     require(initialDelay.isPositive()) { "Retry initialDelay must be positive." }
-    require(maxDelay >= initialDelay) { "Retry maxDelay must be greater than or equal to initialDelay." }
+    require(maxDelay >= initialDelay) {
+      "Retry maxDelay must be greater than or equal to initialDelay."
+    }
     require(backoffMultiplier >= 1.0) { "Retry backoffMultiplier must be at least 1.0." }
   }
 

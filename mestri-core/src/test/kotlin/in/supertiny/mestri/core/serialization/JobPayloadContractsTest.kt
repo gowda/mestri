@@ -11,7 +11,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class JobPayloadContractsTest {
-
   @Test
   fun `job payload captures default transport shape`() {
     val payload =

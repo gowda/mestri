@@ -12,7 +12,6 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 class RedisRuntimeStateStoreTest {
-
   @Test
   fun `save and find lease round trips lease fields`() {
     val hashAccessor = InMemoryRedisHashAccessor()
@@ -85,7 +84,10 @@ class RedisRuntimeStateStoreTest {
 
     override fun entries(key: String): Map<String, String> = data[key].orEmpty()
 
-    override fun putAll(key: String, fields: Map<String, String>) {
+    override fun putAll(
+      key: String,
+      fields: Map<String, String>,
+    ) {
       data[key] = fields.toMap()
     }
 
@@ -97,7 +99,10 @@ class RedisRuntimeStateStoreTest {
   private class InMemoryRedisSetAccessor : RedisSetAccessor {
     private val data = mutableMapOf<String, MutableSet<String>>()
 
-    override fun add(key: String, value: String) {
+    override fun add(
+      key: String,
+      value: String,
+    ) {
       data.getOrPut(key) { linkedSetOf() }.add(value)
     }
 

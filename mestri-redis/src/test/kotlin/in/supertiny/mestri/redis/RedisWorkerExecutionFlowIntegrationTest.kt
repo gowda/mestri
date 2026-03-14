@@ -30,7 +30,6 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 class RedisWorkerExecutionFlowIntegrationTest : RedisIntegrationSupport() {
-
   @Test
   fun `worker execution completes job into succeeded bucket`() {
     val fixture = newFixture()
@@ -77,12 +76,19 @@ class RedisWorkerExecutionFlowIntegrationTest : RedisIntegrationSupport() {
     val cycleResult = coordinator.runNext()
     val record = fixture.jobRecordStore.find(payload.jobId)
     val lease = fixture.leaseStore.find(payload.jobId)
-    val retryScore = fixture.redisTemplate.opsForZSet().score(RedisKeyspace.retry(), payload.jobId.value)
+    val retryScore =
+      fixture.redisTemplate.opsForZSet().score(
+        RedisKeyspace.retry(),
+        payload.jobId.value,
+      )
 
     assertEquals(WorkerCycleOutcome.PROCESSED, cycleResult.outcome)
     assertNotNull(record)
     assertEquals(JobBucket.RETRY, record.bucket)
-    assertEquals("temporary outage", record.payload.metadata[RedisRetryExecutionHandler.METADATA_LAST_ERROR_MESSAGE])
+    assertEquals(
+      "temporary outage",
+      record.payload.metadata[RedisRetryExecutionHandler.METADATA_LAST_ERROR_MESSAGE],
+    )
     assertEquals(Instant.parse("2026-03-15T12:02:05Z").toEpochMilli().toDouble(), retryScore)
     assertNull(lease)
   }
@@ -106,12 +112,19 @@ class RedisWorkerExecutionFlowIntegrationTest : RedisIntegrationSupport() {
     val cycleResult = coordinator.runNext()
     val record = fixture.jobRecordStore.find(payload.jobId)
     val lease = fixture.leaseStore.find(payload.jobId)
-    val deadScore = fixture.redisTemplate.opsForZSet().score(RedisKeyspace.dead(), payload.jobId.value)
+    val deadScore =
+      fixture.redisTemplate.opsForZSet().score(
+        RedisKeyspace.dead(),
+        payload.jobId.value,
+      )
 
     assertEquals(WorkerCycleOutcome.PROCESSED, cycleResult.outcome)
     assertNotNull(record)
     assertEquals(JobBucket.DEAD, record.bucket)
-    assertEquals("fatal outage", record.payload.metadata[RedisDeadLetterExecutionHandler.METADATA_LAST_ERROR_MESSAGE])
+    assertEquals(
+      "fatal outage",
+      record.payload.metadata[RedisDeadLetterExecutionHandler.METADATA_LAST_ERROR_MESSAGE],
+    )
     assertEquals(Instant.parse("2026-03-15T12:02:00Z").toEpochMilli().toDouble(), deadScore)
     assertNull(lease)
   }
@@ -141,7 +154,13 @@ class RedisWorkerExecutionFlowIntegrationTest : RedisIntegrationSupport() {
     val firstRecord = fixture.jobRecordStore.find(firstPayload.jobId)
     val secondRecord = fixture.jobRecordStore.find(secondPayload.jobId)
     val remainingQueueEntries =
-      fixture.redisTemplate.opsForList().range(RedisKeyspace.queue(firstPayload.queue), 0, -1).orEmpty()
+      fixture.redisTemplate
+        .opsForList()
+        .range(
+          RedisKeyspace.queue(firstPayload.queue),
+          0,
+          -1,
+        ).orEmpty()
 
     assertEquals(WorkerCycleOutcome.PROCESSED, firstCycle.outcome)
     assertEquals(WorkerCycleOutcome.STOPPED, secondCycle.outcome)
@@ -166,7 +185,11 @@ class RedisWorkerExecutionFlowIntegrationTest : RedisIntegrationSupport() {
       )
     val successHandler =
       RedisSuccessfulExecutionHandler(
-        terminalJobStore = RedisTerminalJobStore(jobRecordStore, newSortedSetAccessor(redisTemplate)),
+        terminalJobStore =
+          RedisTerminalJobStore(
+            jobRecordStore,
+            newSortedSetAccessor(redisTemplate),
+          ),
         leaseStore = leaseStore,
         clock = { Instant.parse("2026-03-15T12:02:00Z") },
       )
@@ -188,7 +211,11 @@ class RedisWorkerExecutionFlowIntegrationTest : RedisIntegrationSupport() {
             jobRecordStore = jobRecordStore,
             sortedSetAccessor = newSortedSetAccessor(redisTemplate),
           ),
-        terminalJobStore = RedisTerminalJobStore(jobRecordStore, newSortedSetAccessor(redisTemplate)),
+        terminalJobStore =
+          RedisTerminalJobStore(
+            jobRecordStore,
+            newSortedSetAccessor(redisTemplate),
+          ),
         leaseStore = leaseStore,
         clock = { Instant.parse("2026-03-15T12:02:00Z") },
       )
@@ -236,11 +263,12 @@ class RedisWorkerExecutionFlowIntegrationTest : RedisIntegrationSupport() {
       retryHandler = retryHandler,
       deadHandler = deadHandler,
       reservationSupplier = {
-        reservationStore.reserve(
-          queue = QueueName("billing"),
-          workerId = WorkerId("worker-1"),
-          leaseDuration = Duration.ofMinutes(5),
-        )?.reservation
+        reservationStore
+          .reserve(
+            queue = QueueName("billing"),
+            workerId = WorkerId("worker-1"),
+            leaseDuration = Duration.ofMinutes(5),
+          )?.reservation
       },
     )
   }

@@ -9,7 +9,6 @@ class RedisWorkerHeartbeatStore(
   private val hashAccessor: RedisHashAccessor,
   private val setAccessor: RedisSetAccessor,
 ) {
-
   fun save(heartbeat: WorkerHeartbeat) {
     hashAccessor.putAll(
       RedisKeyspace.workerHeartbeat(heartbeat.workerId),
@@ -46,7 +45,10 @@ class RedisWorkerHeartbeatStore(
   fun registeredProcessIds(): Set<ProcessId> =
     setAccessor.members(RedisKeyspace.processRegistry()).map(::ProcessId).toSet()
 
-  private fun requireField(fields: Map<String, String>, name: String): String =
+  private fun requireField(
+    fields: Map<String, String>,
+    name: String,
+  ): String =
     fields[name]?.takeIf { it.isNotBlank() }
       ?: throw IllegalArgumentException("Redis heartbeat field '$name' is required.")
 

@@ -11,7 +11,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
 class RedisRuntimeStateIntegrationTest : RedisIntegrationSupport() {
-
   @Test
   fun `lease persistence round trips through real redis`() {
     val redisTemplate = newStringRedisTemplate()

@@ -12,10 +12,8 @@ import `in`.supertiny.mestri.core.serialization.JobPayload
 import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 
 class ServerExecutionPipelineTest {
-
   @Test
   fun `server execution pipeline invokes middleware and handler in order`() {
     val callOrder = mutableListOf<String>()
@@ -27,11 +25,11 @@ class ServerExecutionPipelineTest {
               callOrder += "middleware-before"
               val result =
                 next.proceed(
-                  request.copy(metadata = request.metadata + ("traceId" to "trace-1"))
+                  request.copy(metadata = request.metadata + ("traceId" to "trace-1")),
                 )
               callOrder += "middleware-after"
               result
-            }
+            },
           ),
         handlerInvoker =
           JobHandlerInvoker { reservation, request ->

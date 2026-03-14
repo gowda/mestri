@@ -5,11 +5,9 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.days
-import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.seconds
 
 class CoreDomainTypesTest {
-
   @Test
   fun `job id random creates non blank id`() {
     val jobId = JobId.random()

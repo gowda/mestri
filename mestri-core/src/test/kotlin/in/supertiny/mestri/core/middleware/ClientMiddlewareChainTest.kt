@@ -9,10 +9,8 @@ import `in`.supertiny.mestri.core.model.SpringBeanTarget
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertTrue
 
 class ClientMiddlewareChainTest {
-
   @Test
   fun `client middleware chain applies middleware in order`() {
     val callOrder = mutableListOf<String>()
@@ -24,7 +22,7 @@ class ClientMiddlewareChainTest {
               callOrder += "first-before"
               val result =
                 next.proceed(
-                  request.copy(metadata = request.metadata + ("traceId" to "trace-1"))
+                  request.copy(metadata = request.metadata + ("traceId" to "trace-1")),
                 )
               callOrder += "first-after"
               result
@@ -68,7 +66,7 @@ class ClientMiddlewareChainTest {
                 jobId = JobId("short-circuit"),
                 queue = QueueName("bulk"),
               )
-            }
+            },
           ),
         terminal =
           ClientChain {
@@ -139,6 +137,6 @@ class ClientMiddlewareChainTest {
               parameterTypeNames = listOf("java.lang.String"),
             ),
           arguments = listOf(InvocationArgument("java.lang.String", "\"user-1\"")),
-        )
+        ),
     )
 }

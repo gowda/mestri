@@ -13,7 +13,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class WorkerExecutionCoordinatorTest {
-
   @Test
   fun `run next processes reservation while worker is running`() {
     val reservation = sampleReservation()

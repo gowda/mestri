@@ -15,7 +15,6 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 class RedisJobRecordStoreTest {
-
   @Test
   fun `save and find round trip a redis job record`() {
     val hashAccessor = InMemoryRedisHashAccessor()
@@ -85,7 +84,10 @@ class RedisJobRecordStoreTest {
 
     override fun entries(key: String): Map<String, String> = data[key].orEmpty()
 
-    override fun putAll(key: String, fields: Map<String, String>) {
+    override fun putAll(
+      key: String,
+      fields: Map<String, String>,
+    ) {
       lastWrittenKey = key
       data[key] = fields.toMap()
     }

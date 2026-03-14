@@ -4,4 +4,6 @@ fun interface RedisListPoller {
   fun leftPop(key: String): String?
 }
 
-interface RedisQueueAccessor : RedisListAccessor, RedisListPoller
+interface RedisQueueAccessor :
+  RedisListAccessor,
+  RedisListPoller

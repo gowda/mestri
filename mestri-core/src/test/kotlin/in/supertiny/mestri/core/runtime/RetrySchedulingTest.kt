@@ -8,7 +8,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class RetrySchedulingTest {
-
   @Test
   fun `retry scheduling defaults to retry bucket`() {
     val scheduling =

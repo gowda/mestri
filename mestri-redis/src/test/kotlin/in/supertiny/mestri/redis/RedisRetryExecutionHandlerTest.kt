@@ -25,7 +25,6 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 class RedisRetryExecutionHandlerTest {
-
   @Test
   fun `retryable execution moves job to retry bucket and clears lease`() {
     val hashAccessor = InMemoryRedisHashAccessor()
@@ -74,8 +73,14 @@ class RedisRetryExecutionHandlerTest {
     assertNotNull(storedRecord)
     assertEquals(JobBucket.RETRY, storedRecord.bucket)
     assertEquals("trace-1", storedRecord.payload.metadata["traceId"])
-    assertEquals("temporary outage", storedRecord.payload.metadata[RedisRetryExecutionHandler.METADATA_LAST_ERROR_MESSAGE])
-    assertEquals("2", storedRecord.payload.metadata[RedisRetryExecutionHandler.METADATA_NEXT_ATTEMPT])
+    assertEquals(
+      "temporary outage",
+      storedRecord.payload.metadata[RedisRetryExecutionHandler.METADATA_LAST_ERROR_MESSAGE],
+    )
+    assertEquals(
+      "2",
+      storedRecord.payload.metadata[RedisRetryExecutionHandler.METADATA_NEXT_ATTEMPT],
+    )
     assertNull(leaseStore.find(reservation.payload.jobId))
   }
 
@@ -96,9 +101,16 @@ class RedisRetryExecutionHandlerTest {
 
     assertFailsWith<IllegalArgumentException> {
       handler.handle(
-        reservation = sampleReservation(retryPolicy = RetryPolicy(maxAttempts = 1, useJitter = false)),
+        reservation =
+          sampleReservation(
+            retryPolicy = RetryPolicy(maxAttempts = 1, useJitter = false),
+          ),
         attempt = 1,
-        result = ServerExecutionResult(outcome = ServerExecutionOutcome.RETRYABLE_FAILURE, errorMessage = "boom"),
+        result =
+          ServerExecutionResult(
+            outcome = ServerExecutionOutcome.RETRYABLE_FAILURE,
+            errorMessage = "boom",
+          ),
       )
     }
   }
@@ -150,7 +162,10 @@ class RedisRetryExecutionHandlerTest {
 
     override fun entries(key: String): Map<String, String> = data[key].orEmpty()
 
-    override fun putAll(key: String, fields: Map<String, String>) {
+    override fun putAll(
+      key: String,
+      fields: Map<String, String>,
+    ) {
       data[key] = fields.toMap()
     }
 
@@ -160,6 +175,10 @@ class RedisRetryExecutionHandlerTest {
   }
 
   private class InMemoryRedisSortedSetAccessor : RedisSortedSetAccessor {
-    override fun add(key: String, value: String, score: Double) = Unit
+    override fun add(
+      key: String,
+      value: String,
+      score: Double,
+    ) = Unit
   }
 }

@@ -8,7 +8,6 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class RuntimeContractsTest {
-
   @Test
   fun `job lease detects expiration`() {
     val acquiredAt = Instant.parse("2026-03-14T10:00:00Z")

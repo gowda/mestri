@@ -8,7 +8,6 @@ import kotlin.time.Duration
 class RetryBackoffCalculator(
   private val random: Random = Random.Default,
 ) {
-
   fun nextDelay(
     policy: RetryPolicy,
     attempt: Int,

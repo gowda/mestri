@@ -1,7 +1,9 @@
 package `in`.supertiny.mestri.core.model
 
 @JvmInline
-value class QueueName(val value: String) {
+value class QueueName(
+  val value: String,
+) {
   init {
     require(value.isNotBlank()) { "Queue name must not be blank." }
     require(value.length <= MAX_LENGTH) { "Queue name must be at most $MAX_LENGTH characters." }

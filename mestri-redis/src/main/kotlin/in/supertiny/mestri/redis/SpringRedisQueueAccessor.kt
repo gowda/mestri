@@ -5,8 +5,10 @@ import org.springframework.data.redis.core.StringRedisTemplate
 class SpringRedisQueueAccessor(
   private val redisTemplate: StringRedisTemplate,
 ) : RedisQueueAccessor {
-
-  override fun rightPush(key: String, value: String) {
+  override fun rightPush(
+    key: String,
+    value: String,
+  ) {
     redisTemplate.opsForList().rightPush(key, value)
   }
 

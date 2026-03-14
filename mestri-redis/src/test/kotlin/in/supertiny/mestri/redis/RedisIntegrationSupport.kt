@@ -9,11 +9,10 @@ import org.testcontainers.junit.jupiter.Testcontainers
 
 @Testcontainers(disabledWithoutDocker = true)
 abstract class RedisIntegrationSupport {
-
   protected fun newStringRedisTemplate(): StringRedisTemplate {
     val connectionFactory =
       LettuceConnectionFactory(
-        RedisStandaloneConfiguration(redis.host, redis.firstMappedPort)
+        RedisStandaloneConfiguration(redis.host, redis.firstMappedPort),
       )
     connectionFactory.afterPropertiesSet()
 
@@ -47,7 +46,10 @@ abstract class RedisIntegrationSupport {
     )
 
   protected fun flushRedis(redisTemplate: StringRedisTemplate) {
-    redisTemplate.connectionFactory?.connection?.serverCommands()?.flushAll()
+    redisTemplate.connectionFactory
+      ?.connection
+      ?.serverCommands()
+      ?.flushAll()
   }
 
   companion object {

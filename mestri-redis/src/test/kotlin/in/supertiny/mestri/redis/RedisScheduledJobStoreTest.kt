@@ -14,7 +14,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
 class RedisScheduledJobStoreTest {
-
   @Test
   fun `persist scheduled stores record and zset entry`() {
     val hashAccessor = InMemoryRedisHashAccessor()
@@ -35,15 +34,17 @@ class RedisScheduledJobStoreTest {
     val result = store.persistScheduled(payload, dueAt)
     val storedRecord =
       RedisJobRecordStore(
-          hashAccessor = hashAccessor,
-          mapper = RedisJobRecordMapper(JacksonJobPayloadSerializer()),
-        )
-        .find(payload.jobId)
+        hashAccessor = hashAccessor,
+        mapper = RedisJobRecordMapper(JacksonJobPayloadSerializer()),
+      ).find(payload.jobId)
 
     assertEquals(JobBucket.SCHEDULED, result.bucket)
     assertEquals("mestri:scheduled", result.bucketKey)
     assertEquals(dueAt, result.dueAt)
-    assertEquals(listOf(ScoredValue(payload.jobId.value, dueAt.toEpochMilli().toDouble())), sortedSetAccessor.valuesFor(result.bucketKey))
+    assertEquals(
+      listOf(ScoredValue(payload.jobId.value, dueAt.toEpochMilli().toDouble())),
+      sortedSetAccessor.valuesFor(result.bucketKey),
+    )
 
     assertNotNull(storedRecord)
     assertEquals(JobBucket.SCHEDULED, storedRecord.bucket)
@@ -69,7 +70,10 @@ class RedisScheduledJobStoreTest {
 
     assertEquals(JobBucket.RETRY, result.bucket)
     assertEquals("mestri:retry", result.bucketKey)
-    assertEquals(listOf(ScoredValue(payload.jobId.value, dueAt.toEpochMilli().toDouble())), sortedSetAccessor.valuesFor(result.bucketKey))
+    assertEquals(
+      listOf(ScoredValue(payload.jobId.value, dueAt.toEpochMilli().toDouble())),
+      sortedSetAccessor.valuesFor(result.bucketKey),
+    )
   }
 
   private fun samplePayload(): JobPayload =
@@ -97,7 +101,10 @@ class RedisScheduledJobStoreTest {
 
     override fun entries(key: String): Map<String, String> = data[key].orEmpty()
 
-    override fun putAll(key: String, fields: Map<String, String>) {
+    override fun putAll(
+      key: String,
+      fields: Map<String, String>,
+    ) {
       data[key] = fields.toMap()
     }
 
@@ -114,7 +121,11 @@ class RedisScheduledJobStoreTest {
   private class InMemoryRedisSortedSetAccessor : RedisSortedSetAccessor {
     private val data = mutableMapOf<String, MutableList<ScoredValue>>()
 
-    override fun add(key: String, value: String, score: Double) {
+    override fun add(
+      key: String,
+      value: String,
+      score: Double,
+    ) {
       data.getOrPut(key) { mutableListOf() }.add(ScoredValue(value, score))
     }
 
