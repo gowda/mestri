@@ -34,7 +34,7 @@ class RedisRetryExecutionHandlerTest {
         mapper = RedisJobRecordMapper(JacksonJobPayloadSerializer()),
       )
     val sortedSetAccessor = InMemoryRedisSortedSetAccessor()
-    val leaseStore = RedisJobLeaseStore(hashAccessor)
+    val leaseStore = RedisJobLeaseStore(hashAccessor, InMemoryRedisSetAccessor())
     val handler =
       RedisRetryExecutionHandler(
         scheduledJobStore = RedisScheduledJobStore(jobRecordStore, sortedSetAccessor),
@@ -96,7 +96,7 @@ class RedisRetryExecutionHandlerTest {
             ),
             InMemoryRedisSortedSetAccessor(),
           ),
-        leaseStore = RedisJobLeaseStore(InMemoryRedisHashAccessor()),
+        leaseStore = RedisJobLeaseStore(InMemoryRedisHashAccessor(), InMemoryRedisSetAccessor()),
       )
 
     assertFailsWith<IllegalArgumentException> {
@@ -180,5 +180,25 @@ class RedisRetryExecutionHandlerTest {
       value: String,
       score: Double,
     ) = Unit
+  }
+
+  private class InMemoryRedisSetAccessor : RedisSetAccessor {
+    private val data = mutableMapOf<String, MutableSet<String>>()
+
+    override fun add(
+      key: String,
+      value: String,
+    ) {
+      data.getOrPut(key) { linkedSetOf() }.add(value)
+    }
+
+    override fun members(key: String): Set<String> = data[key].orEmpty()
+
+    override fun remove(
+      key: String,
+      value: String,
+    ) {
+      data[key]?.remove(value)
+    }
   }
 }

@@ -37,7 +37,10 @@ abstract class RedisIntegrationSupport {
     )
 
   protected fun newLeaseStore(redisTemplate: StringRedisTemplate): RedisJobLeaseStore =
-    RedisJobLeaseStore(newHashAccessor(redisTemplate))
+    RedisJobLeaseStore(
+      hashAccessor = newHashAccessor(redisTemplate),
+      setAccessor = newSetAccessor(redisTemplate),
+    )
 
   protected fun newHeartbeatStore(redisTemplate: StringRedisTemplate): RedisWorkerHeartbeatStore =
     RedisWorkerHeartbeatStore(

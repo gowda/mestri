@@ -24,6 +24,10 @@ object RedisKeyspace {
 
   fun processRegistry(): String = "$ROOT:processes"
 
+  fun workerRegistry(): String = "$ROOT:workers"
+
+  fun leaseRegistry(): String = "$ROOT:leases"
+
   fun process(processId: ProcessId): String = "$ROOT:process:${processId.value}"
 
   fun processWork(processId: ProcessId): String = "$ROOT:process:${processId.value}:work"

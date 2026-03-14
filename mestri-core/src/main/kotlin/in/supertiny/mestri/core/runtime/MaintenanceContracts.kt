@@ -18,6 +18,10 @@ data class MaintenanceReport(
   val skippedActions: List<MaintenanceAction> = emptyList(),
 )
 
+fun interface MaintenanceSnapshotSource {
+  fun snapshot(now: Instant): MaintenanceSnapshot
+}
+
 fun interface MaintenancePlanner {
   fun plan(
     snapshot: MaintenanceSnapshot,
@@ -30,4 +34,45 @@ fun interface MaintenanceExecutor {
     plan: MaintenancePlan,
     now: Instant,
   ): MaintenanceReport
+}
+
+class DefaultMaintenancePlanner : MaintenancePlanner {
+  override fun plan(
+    snapshot: MaintenanceSnapshot,
+    now: Instant,
+  ): MaintenancePlan {
+    val expiredLeaseActions =
+      snapshot.leases
+        .filter { it.isExpired(at = now) }
+        .map { lease ->
+          RequeueExpiredLease(
+            jobId = lease.jobId,
+            workerId = lease.workerId,
+          )
+        }
+    val staleWorkerActions =
+      snapshot.heartbeats
+        .filter { it.isStale(at = now) }
+        .distinctBy { it.workerId }
+        .map { heartbeat -> CleanupStaleWorker(workerId = heartbeat.workerId) }
+
+    return MaintenancePlan(
+      createdAt = now,
+      actions = expiredLeaseActions + staleWorkerActions,
+    )
+  }
+}
+
+class MaintenanceLoop(
+  private val snapshotSource: MaintenanceSnapshotSource,
+  private val planner: MaintenancePlanner,
+  private val executor: MaintenanceExecutor,
+  private val clock: () -> Instant = { Instant.now() },
+) {
+  fun runCycle(): MaintenanceReport {
+    val now = clock()
+    val snapshot = snapshotSource.snapshot(now)
+    val plan = planner.plan(snapshot, now)
+    return executor.execute(plan, now)
+  }
 }

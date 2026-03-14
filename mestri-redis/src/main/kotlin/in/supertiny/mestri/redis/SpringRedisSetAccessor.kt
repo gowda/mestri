@@ -13,4 +13,11 @@ class SpringRedisSetAccessor(
   }
 
   override fun members(key: String): Set<String> = redisTemplate.opsForSet().members(key).orEmpty()
+
+  override fun remove(
+    key: String,
+    value: String,
+  ) {
+    redisTemplate.opsForSet().remove(key, value)
+  }
 }

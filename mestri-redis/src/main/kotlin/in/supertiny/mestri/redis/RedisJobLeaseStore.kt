@@ -7,6 +7,7 @@ import java.time.Instant
 
 class RedisJobLeaseStore(
   private val hashAccessor: RedisHashAccessor,
+  private val setAccessor: RedisSetAccessor,
 ) {
   fun save(lease: JobLease) {
     hashAccessor.putAll(
@@ -18,6 +19,7 @@ class RedisJobLeaseStore(
         FIELD_EXPIRES_AT to lease.expiresAt.toString(),
       ),
     )
+    setAccessor.add(RedisKeyspace.leaseRegistry(), lease.jobId.value)
   }
 
   fun find(jobId: JobId): JobLease? {
@@ -34,7 +36,13 @@ class RedisJobLeaseStore(
 
   fun delete(jobId: JobId) {
     hashAccessor.delete(RedisKeyspace.workerLease(jobId))
+    setAccessor.remove(RedisKeyspace.leaseRegistry(), jobId.value)
   }
+
+  fun findAll(): List<JobLease> =
+    setAccessor.members(RedisKeyspace.leaseRegistry())
+      .map(::JobId)
+      .mapNotNull(::find)
 
   private fun requireField(
     fields: Map<String, String>,

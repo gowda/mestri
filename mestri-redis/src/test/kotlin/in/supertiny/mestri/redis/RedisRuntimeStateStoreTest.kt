@@ -15,7 +15,7 @@ class RedisRuntimeStateStoreTest {
   @Test
   fun `save and find lease round trips lease fields`() {
     val hashAccessor = InMemoryRedisHashAccessor()
-    val store = RedisJobLeaseStore(hashAccessor)
+    val store = RedisJobLeaseStore(hashAccessor, InMemoryRedisSetAccessor())
     val lease =
       JobLease(
         jobId = JobId("job-123"),
@@ -33,7 +33,7 @@ class RedisRuntimeStateStoreTest {
 
   @Test
   fun `find lease returns null when missing`() {
-    val store = RedisJobLeaseStore(InMemoryRedisHashAccessor())
+    val store = RedisJobLeaseStore(InMemoryRedisHashAccessor(), InMemoryRedisSetAccessor())
 
     assertNull(store.find(JobId("missing")))
   }
@@ -41,7 +41,8 @@ class RedisRuntimeStateStoreTest {
   @Test
   fun `delete lease removes stored lease`() {
     val hashAccessor = InMemoryRedisHashAccessor()
-    val store = RedisJobLeaseStore(hashAccessor)
+    val setAccessor = InMemoryRedisSetAccessor()
+    val store = RedisJobLeaseStore(hashAccessor, setAccessor)
     val lease =
       JobLease(
         jobId = JobId("job-123"),
@@ -77,6 +78,36 @@ class RedisRuntimeStateStoreTest {
     assertNotNull(loaded)
     assertEquals(heartbeat, loaded)
     assertEquals(setOf(ProcessId("process-1")), store.registeredProcessIds())
+    assertEquals(setOf(WorkerId("worker-1")), store.registeredWorkerIds())
+  }
+
+  @Test
+  fun `find all lease and heartbeat snapshots enumerate registered state`() {
+    val hashAccessor = InMemoryRedisHashAccessor()
+    val setAccessor = InMemoryRedisSetAccessor()
+    val leaseStore = RedisJobLeaseStore(hashAccessor, setAccessor)
+    val heartbeatStore = RedisWorkerHeartbeatStore(hashAccessor, setAccessor)
+    val lease =
+      JobLease(
+        jobId = JobId("job-123"),
+        workerId = WorkerId("worker-1"),
+        acquiredAt = Instant.parse("2026-03-15T10:00:00Z"),
+        expiresAt = Instant.parse("2026-03-15T10:05:00Z"),
+      )
+    val heartbeat =
+      WorkerHeartbeat(
+        workerId = WorkerId("worker-1"),
+        processId = ProcessId("process-1"),
+        queues = setOf("default"),
+        recordedAt = Instant.parse("2026-03-15T10:00:00Z"),
+        expiresAt = Instant.parse("2026-03-15T10:00:30Z"),
+      )
+
+    leaseStore.save(lease)
+    heartbeatStore.save(heartbeat)
+
+    assertEquals(listOf(lease), leaseStore.findAll())
+    assertEquals(listOf(heartbeat), heartbeatStore.findAll())
   }
 
   private class InMemoryRedisHashAccessor : RedisHashAccessor {
@@ -107,5 +138,12 @@ class RedisRuntimeStateStoreTest {
     }
 
     override fun members(key: String): Set<String> = data[key].orEmpty()
+
+    override fun remove(
+      key: String,
+      value: String,
+    ) {
+      data[key]?.remove(value)
+    }
   }
 }

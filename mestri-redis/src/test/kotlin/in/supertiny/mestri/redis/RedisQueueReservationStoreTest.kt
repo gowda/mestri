@@ -21,7 +21,7 @@ class RedisQueueReservationStoreTest {
   fun `reserve moves queued job to running with lease`() {
     val redis = InMemoryRedis()
     val recordStore = recordStore(redis)
-    val leaseStore = RedisJobLeaseStore(redis)
+    val leaseStore = RedisJobLeaseStore(redis, redis)
     val enqueuer =
       RedisImmediateJobEnqueuer(
         jobRecordStore = recordStore,
@@ -65,7 +65,7 @@ class RedisQueueReservationStoreTest {
       RedisQueueReservationStore(
         queueAccessor = redis,
         jobRecordStore = recordStore(redis),
-        leaseStore = RedisJobLeaseStore(redis),
+        leaseStore = RedisJobLeaseStore(redis, redis),
       )
 
     val result =
@@ -106,9 +106,11 @@ class RedisQueueReservationStoreTest {
 
   private class InMemoryRedis :
     RedisHashAccessor,
-    RedisQueueAccessor {
+    RedisQueueAccessor,
+    RedisSetAccessor {
     private val hashes = mutableMapOf<String, Map<String, String>>()
     private val lists = mutableMapOf<String, MutableList<String>>()
+    private val sets = mutableMapOf<String, MutableSet<String>>()
 
     override fun entries(key: String): Map<String, String> = hashes[key].orEmpty()
 
@@ -131,6 +133,22 @@ class RedisQueueReservationStoreTest {
     }
 
     override fun leftPop(key: String): String? = lists[key]?.removeFirstOrNull()
+
+    override fun add(
+      key: String,
+      value: String,
+    ) {
+      sets.getOrPut(key) { linkedSetOf() }.add(value)
+    }
+
+    override fun members(key: String): Set<String> = sets[key].orEmpty()
+
+    override fun remove(
+      key: String,
+      value: String,
+    ) {
+      sets[key]?.remove(value)
+    }
 
     fun listValues(key: String): List<String> = lists[key].orEmpty()
   }

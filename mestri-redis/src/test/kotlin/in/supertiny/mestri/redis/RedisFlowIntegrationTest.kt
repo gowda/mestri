@@ -77,7 +77,7 @@ class RedisFlowIntegrationTest {
   @Test
   fun `lease and heartbeat persistence produce running state inputs`() {
     val redis = InMemoryRedis()
-    val leaseStore = RedisJobLeaseStore(redis)
+    val leaseStore = RedisJobLeaseStore(redis, redis)
     val heartbeatStore = RedisWorkerHeartbeatStore(redis, redis)
 
     leaseStore.save(
@@ -215,6 +215,13 @@ class RedisFlowIntegrationTest {
     }
 
     override fun members(key: String): Set<String> = sets[key].orEmpty()
+
+    override fun remove(
+      key: String,
+      value: String,
+    ) {
+      sets[key]?.remove(value)
+    }
 
     fun listValues(key: String): List<String> = lists[key].orEmpty()
 

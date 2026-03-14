@@ -21,6 +21,7 @@ class RedisWorkerHeartbeatStore(
       ),
     )
     setAccessor.add(RedisKeyspace.processRegistry(), heartbeat.processId.value)
+    setAccessor.add(RedisKeyspace.workerRegistry(), heartbeat.workerId.value)
   }
 
   fun find(workerId: WorkerId): WorkerHeartbeat? {
@@ -44,6 +45,11 @@ class RedisWorkerHeartbeatStore(
 
   fun registeredProcessIds(): Set<ProcessId> =
     setAccessor.members(RedisKeyspace.processRegistry()).map(::ProcessId).toSet()
+
+  fun registeredWorkerIds(): Set<WorkerId> =
+    setAccessor.members(RedisKeyspace.workerRegistry()).map(::WorkerId).toSet()
+
+  fun findAll(): List<WorkerHeartbeat> = registeredWorkerIds().mapNotNull(::find)
 
   private fun requireField(
     fields: Map<String, String>,
