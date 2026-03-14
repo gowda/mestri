@@ -87,6 +87,50 @@ class RedisScheduledJobPromoterTest {
     assertEquals(emptyList(), listAccessor.valuesFor(RedisKeyspace.queue(QueueName("billing"))))
   }
 
+  @Test
+  fun `promote due retry moves due retry jobs into queue and leaves future retry jobs`() {
+    val hashAccessor = InMemoryRedisHashAccessor()
+    val listAccessor = InMemoryRedisListAccessor()
+    val sortedSetAccessor = InMemoryRedisSortedSetAccessor()
+    val jobRecordStore =
+      RedisJobRecordStore(
+        hashAccessor = hashAccessor,
+        mapper = RedisJobRecordMapper(JacksonJobPayloadSerializer()),
+      )
+    val scheduledStore =
+      RedisScheduledJobStore(
+        jobRecordStore = jobRecordStore,
+        sortedSetAccessor = sortedSetAccessor,
+        clock = { Instant.parse("2026-03-15T12:00:00Z") },
+      )
+    val promoter =
+      RedisScheduledJobPromoter(
+        jobRecordStore = jobRecordStore,
+        sortedSetAccessor = sortedSetAccessor,
+        listAccessor = listAccessor,
+      )
+    val duePayload = samplePayload("job-retry-due")
+    val futurePayload = samplePayload("job-retry-future")
+
+    scheduledStore.persistRetry(duePayload, Instant.parse("2026-03-15T12:05:00Z"))
+    scheduledStore.persistRetry(futurePayload, Instant.parse("2026-03-15T12:15:00Z"))
+
+    val result = promoter.promoteDueRetry(now = Instant.parse("2026-03-15T12:10:00Z"))
+
+    assertEquals(listOf(JobId("job-retry-due")), result.promotedJobIds)
+    assertEquals(emptyList(), result.skippedJobIds)
+    assertEquals(JobBucket.QUEUED, jobRecordStore.find(JobId("job-retry-due"))?.bucket)
+    assertEquals(JobBucket.RETRY, jobRecordStore.find(JobId("job-retry-future"))?.bucket)
+    assertEquals(
+      listOf("job-retry-due"),
+      listAccessor.valuesFor(RedisKeyspace.queue(QueueName("billing"))),
+    )
+    assertEquals(
+      listOf("job-retry-future"),
+      sortedSetAccessor.range(RedisKeyspace.retry(), 0, -1),
+    )
+  }
+
   private fun samplePayload(jobId: String): JobPayload =
     JobPayload(
       jobId = JobId(jobId),
