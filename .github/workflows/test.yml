@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   test:
-    name: Run Tests
+    name: Run Unit And Integration Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -27,5 +27,8 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Run test suite
+      - name: Run Redis integration tests
+        run: ./gradlew --no-daemon :mestri-redis:test
+
+      - name: Run full test suite
         run: ./gradlew --no-daemon test
