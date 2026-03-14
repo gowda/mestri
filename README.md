@@ -2,6 +2,8 @@
 
 Mestri is a Redis-backed background job system for Kotlin and Spring Boot with Sidekiq-style client/server middleware, worker architecture, and dashboard, plus JobRunr-compatible APIs.
 
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for the detailed architecture and delivery plan.
+
 ## Modules
 
 - `mestri-core`: core job model, middleware contracts, worker engine, scheduling abstractions
@@ -17,3 +19,50 @@ Mestri targets Java 17 to match the Spring Boot 3.3 applications in the current 
 ## Spring Boot Support
 
 Mestri is initially scoped for Spring Boot 3.3.x applications, matching the current `master-service` and dependent services.
+
+## Requirements
+
+- Java 17+
+- Gradle 8.10.2 wrapper
+- Redis
+
+## Getting Started
+
+Generate the Gradle wrapper if it is not already present:
+
+```bash
+gradle wrapper --gradle-version 8.10.2
+```
+
+List the modules in the project:
+
+```bash
+./gradlew projects
+```
+
+Build all modules:
+
+```bash
+./gradlew build
+```
+
+## Repository Layout
+
+```text
+mestri/
+  mestri-core/
+  mestri-redis/
+  mestri-spring-boot-starter/
+  mestri-dashboard/
+  mestri-jobrunr-compat/
+```
+
+## Current Status
+
+This repository currently contains:
+
+- the multi-module Gradle/Kotlin scaffold
+- the initial Spring Boot 3.3 / Java 17 baseline
+- the architecture document in `ARCHITECTURE.md`
+
+The runtime implementation is intentionally not built out yet. The next steps are to define the core contracts in `mestri-core`, then implement Redis storage and the Spring Boot starter.
