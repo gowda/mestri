@@ -1,5 +1,6 @@
 package `in`.supertiny.mestri.redis
 
+import `in`.supertiny.mestri.core.model.DeduplicationKey
 import `in`.supertiny.mestri.core.model.JobId
 import `in`.supertiny.mestri.core.model.QueueName
 import `in`.supertiny.mestri.core.runtime.ProcessId
@@ -35,6 +36,8 @@ object RedisKeyspace {
   fun workerLease(jobId: JobId): String = "$ROOT:lease:${jobId.value}"
 
   fun workerHeartbeat(workerId: WorkerId): String = "$ROOT:worker:${workerId.value}:heartbeat"
+
+  fun deduplication(key: DeduplicationKey): String = "$ROOT:dedup:${key.value}"
 
   fun recurringDefinitions(): String = "$ROOT:recurring"
 

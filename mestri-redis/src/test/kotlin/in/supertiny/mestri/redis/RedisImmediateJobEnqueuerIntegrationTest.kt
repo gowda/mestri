@@ -1,5 +1,8 @@
 package `in`.supertiny.mestri.redis
 
+import `in`.supertiny.mestri.core.model.DeduplicationKey
+import `in`.supertiny.mestri.core.model.DeduplicationPolicy
+import `in`.supertiny.mestri.core.model.DeduplicationScope
 import `in`.supertiny.mestri.core.model.InvocationArgument
 import `in`.supertiny.mestri.core.model.InvocationDescriptor
 import `in`.supertiny.mestri.core.model.InvocationMethod
@@ -40,6 +43,35 @@ class RedisImmediateJobEnqueuerIntegrationTest : RedisIntegrationSupport() {
     assertEquals(payload, storedRecord.payload)
   }
 
+  @Test
+  fun `immediate enqueue rejects duplicate active deduplication key in redis`() {
+    val redisTemplate = newStringRedisTemplate()
+    flushRedis(redisTemplate)
+
+    val hashAccessor = newHashAccessor(redisTemplate)
+    val jobRecordStore = newJobRecordStore(redisTemplate)
+    val enqueuer =
+      RedisImmediateJobEnqueuer(
+        jobRecordStore = jobRecordStore,
+        listAccessor = SpringRedisListAccessor(redisTemplate),
+        deduplicationStore = RedisDeduplicationStore(hashAccessor),
+        clock = { Instant.parse("2026-03-15T10:00:00Z") },
+      )
+    val firstPayload = samplePayload().copy(jobId = JobId("job-integration-1"))
+    val duplicatePayload = samplePayload().copy(jobId = JobId("job-integration-2"))
+
+    enqueuer.enqueue(firstPayload)
+    val duplicateResult = enqueuer.enqueue(duplicatePayload)
+    val queueValues =
+      redisTemplate.opsForList().range(RedisKeyspace.queue(firstPayload.queue), 0, -1).orEmpty()
+
+    assertEquals(false, duplicateResult.accepted)
+    assertEquals(JobId("job-integration-1"), duplicateResult.jobId)
+    assertEquals(JobId("job-integration-1"), duplicateResult.deduplicatedBy)
+    assertEquals(listOf("job-integration-1"), queueValues)
+    assertEquals(null, jobRecordStore.find(JobId("job-integration-2")))
+  }
+
   private fun samplePayload(): JobPayload =
     JobPayload(
       jobId = JobId("job-integration-1"),
@@ -59,5 +91,7 @@ class RedisImmediateJobEnqueuerIntegrationTest : RedisIntegrationSupport() {
         ),
       queue = QueueName("billing"),
       metadata = mapOf("traceId" to "trace-1"),
+      deduplicationKey = DeduplicationKey("invoice-user-1"),
+      deduplicationPolicy = DeduplicationPolicy(scope = DeduplicationScope.ENQUEUE),
     )
 }

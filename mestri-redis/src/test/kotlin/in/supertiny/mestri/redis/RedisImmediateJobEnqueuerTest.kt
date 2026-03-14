@@ -1,5 +1,8 @@
 package `in`.supertiny.mestri.redis
 
+import `in`.supertiny.mestri.core.model.DeduplicationKey
+import `in`.supertiny.mestri.core.model.DeduplicationPolicy
+import `in`.supertiny.mestri.core.model.DeduplicationScope
 import `in`.supertiny.mestri.core.model.InvocationArgument
 import `in`.supertiny.mestri.core.model.InvocationDescriptor
 import `in`.supertiny.mestri.core.model.InvocationMethod
@@ -44,6 +47,36 @@ class RedisImmediateJobEnqueuerTest {
     assertEquals(payload, storedRecord.payload)
   }
 
+  @Test
+  fun `enqueue rejects duplicate job when active deduplication key exists`() {
+    val hashAccessor = InMemoryRedisHashAccessor()
+    val listAccessor = InMemoryRedisListAccessor()
+    val store =
+      RedisJobRecordStore(
+        hashAccessor = hashAccessor,
+        mapper = RedisJobRecordMapper(JacksonJobPayloadSerializer()),
+      )
+    val enqueuer =
+      RedisImmediateJobEnqueuer(
+        jobRecordStore = store,
+        listAccessor = listAccessor,
+        deduplicationStore = RedisDeduplicationStore(hashAccessor),
+        clock = { Instant.parse("2026-03-14T10:00:00Z") },
+      )
+    val firstPayload = samplePayload().copy(jobId = JobId("job-123"))
+    val duplicatePayload = samplePayload().copy(jobId = JobId("job-456"))
+
+    val firstResult = enqueuer.enqueue(firstPayload)
+    val duplicateResult = enqueuer.enqueue(duplicatePayload)
+
+    assertEquals(true, firstResult.accepted)
+    assertEquals(false, duplicateResult.accepted)
+    assertEquals(JobId("job-123"), duplicateResult.jobId)
+    assertEquals(JobId("job-123"), duplicateResult.deduplicatedBy)
+    assertEquals(listOf("job-123"), listAccessor.valuesFor("mestri:queue:billing"))
+    assertEquals(null, store.find(JobId("job-456")))
+  }
+
   private fun samplePayload(): JobPayload =
     JobPayload(
       jobId = JobId("job-123"),
@@ -63,6 +96,8 @@ class RedisImmediateJobEnqueuerTest {
         ),
       queue = QueueName("billing"),
       metadata = mapOf("traceId" to "trace-1"),
+      deduplicationKey = DeduplicationKey("invoice-user-1"),
+      deduplicationPolicy = DeduplicationPolicy(scope = DeduplicationScope.ENQUEUE),
     )
 
   private class InMemoryRedisHashAccessor : RedisHashAccessor {

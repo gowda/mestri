@@ -7,4 +7,6 @@ data class RedisImmediateEnqueueResult(
   val jobId: JobId,
   val queue: QueueName,
   val queueKey: String,
+  val accepted: Boolean = true,
+  val deduplicatedBy: JobId? = null,
 )
