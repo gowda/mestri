@@ -76,6 +76,11 @@ This repository currently contains:
   - core contracts in `mestri-core`
   - Redis key schema and persistence primitives in `mestri-redis`
   - module-level tests for the implemented core and Redis layers
+  - real Redis-backed integration tests for:
+    - immediate queue flows
+    - scheduled and retry persistence
+    - succeeded and deleted retention buckets
+    - leases, heartbeats, and process registry behavior
 - GitHub Actions test automation
 - Dependabot configuration for Gradle and GitHub Actions updates
 
@@ -91,12 +96,15 @@ Current implementation coverage includes:
   - scheduled and retry persistence
   - lease and heartbeat persistence
   - succeeded and deleted retention markers
+- shared Testcontainers-based Redis integration test support for `mestri-redis`
 
 The next major focus is the worker execution engine, starting with queue polling, reservation, execution flow, and state transitions.
 
 ## Automation
 
-- GitHub Actions runs `./gradlew test` on pushes to `main` and on pull requests
+- GitHub Actions runs:
+  - `./gradlew --no-daemon :mestri-redis:test`
+  - `./gradlew --no-daemon test`
 - Dependabot is configured for grouped updates for:
   - Gradle dependencies
   - GitHub Actions

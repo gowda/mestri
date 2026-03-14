@@ -210,6 +210,15 @@ The current Redis data model is intentionally explicit about primitive usage:
 
 This keeps the system close to Redis semantics instead of hiding storage behind a relational-style state layer.
 
+## Redis Test Strategy
+
+Mestri uses two layers of Redis validation:
+
+- fast in-memory persistence tests for isolated mapping and transition behavior
+- real Redis integration tests backed by Testcontainers for queue, sorted-set, lease, heartbeat, and retention-marker behavior
+
+The real Redis suite lives in `mestri-redis` and is intended to run in CI as part of normal validation.
+
 ## Running State
 
 `running` is a logical runtime bucket, not a primary persisted Redis collection.
@@ -370,6 +379,7 @@ For transition periods, the Spring Boot starter may optionally read legacy `org.
   - payload serialization
   - hash/list/set/sorted-set access abstractions
   - job record, queue, schedule, lease, heartbeat, and retention persistence primitives
+  - real Redis integration tests
   - later atomic scripts, promotion, maintenance, and recovery
 - `mestri-spring-boot-starter`
   - auto-configuration
