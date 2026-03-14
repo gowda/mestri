@@ -99,6 +99,11 @@ This repository currently contains:
   - server execution pipeline
   - success, retry, and dead-letter transitions
   - graceful worker shutdown coordination
+- completed work for built-in orphan recovery and maintenance:
+  - maintenance loop planning and execution
+  - orphaned running-job recovery into `retry` or `queued`
+  - stale worker and process registry cleanup
+  - retention cleanup for `succeeded`, `deleted`, `retry`, and `dead`
 - GitHub Actions test automation
 - Dependabot configuration for Gradle and GitHub Actions updates
 
@@ -113,17 +118,22 @@ Current implementation coverage includes:
   - immediate queue enqueue
   - scheduled and retry persistence
   - lease and heartbeat persistence
-  - succeeded and deleted retention markers
+  - dead, succeeded, and deleted retention markers
 - shared Testcontainers-based Redis integration test support for `mestri-redis`
+- maintenance and recovery coverage for:
+  - worker crash recovery
+  - expired lease recovery
+  - stale worker cleanup
+  - retained-bucket trimming
 
-The next major focus is built-in orphan recovery and maintenance.
+The next major focus is scheduling, promotion, and recurring jobs.
 
 ## Automation
 
 - GitHub Actions checks run:
   - `./gradlew --no-daemon ktlintCheck`
-  - `./gradlew --no-daemon :mestri-redis:test`
   - `./gradlew --no-daemon test`
+  - `./gradlew --no-daemon :mestri-redis:integrationTest`
 - Dependabot is configured for grouped updates for:
   - Gradle dependencies
   - GitHub Actions

@@ -202,9 +202,9 @@ The current Redis data model is intentionally explicit about primitive usage:
 - Redis sorted sets:
   - `scheduled`
   - `retry`
+  - `dead`
   - `succeeded`
   - `deleted`
-  - later `dead`
 - Redis sets:
   - process registry
 
@@ -215,7 +215,7 @@ This keeps the system close to Redis semantics instead of hiding storage behind 
 Mestri uses two layers of Redis validation:
 
 - fast in-memory persistence tests for isolated mapping and transition behavior
-- real Redis integration tests backed by Testcontainers for queue, sorted-set, lease, heartbeat, and retention-marker behavior
+- real Redis integration tests backed by Testcontainers for queue, sorted-set, lease, heartbeat, retention-marker, worker execution, and maintenance behavior
 
 The real Redis suite lives in `mestri-redis` and is intended to run in CI as part of normal validation.
 
@@ -228,7 +228,7 @@ It is derived from:
 - job leases
 - worker heartbeat hashes
 - process registry membership
-- later per-process or per-worker in-flight work metadata
+- per-process or per-worker in-flight work metadata where needed
 
 This is intentionally closer to Sidekiq’s runtime model than a standalone `running` list or sorted set.
 
@@ -252,9 +252,9 @@ Mestri retains `succeeded` and `deleted` buckets with configurable retention.
 
 - bucket-specific retention can be set for `succeeded`
 - bucket-specific retention can be set for `deleted`
+- bucket-specific retention can be set for `retry`
+- bucket-specific retention can be set for `dead`
 - a global fallback retention applies when bucket-specific settings are absent
-
-Additional retention may also be configurable for `dead` and `retry`.
 
 Cleanup runs in the runtime maintenance loop.
 
@@ -380,7 +380,7 @@ For transition periods, the Spring Boot starter may optionally read legacy `org.
   - hash/list/set/sorted-set access abstractions
   - job record, queue, schedule, lease, heartbeat, and retention persistence primitives
   - real Redis integration tests
-  - later atomic scripts, promotion, maintenance, and recovery
+  - maintenance, recovery, and retention cleanup
 - `mestri-spring-boot-starter`
   - auto-configuration
   - Spring integration
