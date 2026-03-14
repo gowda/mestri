@@ -9,4 +9,6 @@ data class RedisScheduledPersistenceResult(
   val bucket: JobBucket,
   val bucketKey: String,
   val dueAt: Instant,
+  val accepted: Boolean = true,
+  val deduplicatedBy: JobId? = null,
 )

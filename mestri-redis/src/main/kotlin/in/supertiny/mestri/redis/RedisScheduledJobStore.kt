@@ -1,5 +1,7 @@
 package `in`.supertiny.mestri.redis
 
+import `in`.supertiny.mestri.core.model.DeduplicationScope
+import `in`.supertiny.mestri.core.model.DeduplicationStrategy
 import `in`.supertiny.mestri.core.model.JobBucket
 import `in`.supertiny.mestri.core.serialization.JobPayload
 import java.time.Instant
@@ -7,6 +9,7 @@ import java.time.Instant
 class RedisScheduledJobStore(
   private val jobRecordStore: RedisJobRecordStore,
   private val sortedSetAccessor: RedisSortedSetAccessor,
+  private val deduplicationStore: RedisDeduplicationStore? = null,
   private val clock: () -> Instant = { Instant.now() },
 ) {
   fun persistScheduled(
@@ -38,6 +41,45 @@ class RedisScheduledJobStore(
     dueAt: Instant,
   ): RedisScheduledPersistenceResult {
     val now = clock()
+    val deduplicationKey = payload.deduplicationKey
+    val deduplicationPolicy = payload.deduplicationPolicy
+    if (
+      bucket == JobBucket.SCHEDULED &&
+      deduplicationStore != null &&
+      deduplicationKey != null &&
+      deduplicationPolicy?.scope == DeduplicationScope.SCHEDULE
+    ) {
+      when (
+        val claim =
+          deduplicationStore.claim(
+            key = deduplicationKey,
+            policy = deduplicationPolicy,
+            jobId = payload.jobId,
+            now = now,
+          )
+      ) {
+        is RedisDeduplicationClaimRejected -> {
+          if (deduplicationPolicy.strategy == DeduplicationStrategy.COALESCE) {
+            sortedSetAccessor.add(
+              bucketKey,
+              claim.existingRecord.jobId.value,
+              dueAt.toEpochMilli().toDouble(),
+            )
+          }
+          return RedisScheduledPersistenceResult(
+            jobId = claim.existingRecord.jobId,
+            bucket = bucket,
+            bucketKey = bucketKey,
+            dueAt = dueAt,
+            accepted = false,
+            deduplicatedBy = claim.existingRecord.jobId,
+          )
+        }
+
+        is RedisDeduplicationClaimAccepted -> Unit
+      }
+    }
+
     val record =
       RedisJobRecord(
         jobId = payload.jobId,

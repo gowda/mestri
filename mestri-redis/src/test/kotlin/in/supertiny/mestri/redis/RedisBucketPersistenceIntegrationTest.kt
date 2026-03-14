@@ -1,5 +1,9 @@
 package `in`.supertiny.mestri.redis
 
+import `in`.supertiny.mestri.core.model.DeduplicationKey
+import `in`.supertiny.mestri.core.model.DeduplicationPolicy
+import `in`.supertiny.mestri.core.model.DeduplicationScope
+import `in`.supertiny.mestri.core.model.DeduplicationStrategy
 import `in`.supertiny.mestri.core.model.InvocationArgument
 import `in`.supertiny.mestri.core.model.InvocationDescriptor
 import `in`.supertiny.mestri.core.model.InvocationMethod
@@ -50,6 +54,84 @@ class RedisBucketPersistenceIntegrationTest : RedisIntegrationSupport() {
 
     assertEquals(JobBucket.SCHEDULED, jobRecordStore.find(JobId("job-scheduled"))?.bucket)
     assertEquals(JobBucket.RETRY, jobRecordStore.find(JobId("job-retry"))?.bucket)
+  }
+
+  @Test
+  fun `scheduled persistence rejects duplicate active deduplication key in redis`() {
+    val redisTemplate = newStringRedisTemplate()
+    flushRedis(redisTemplate)
+
+    val hashAccessor = newHashAccessor(redisTemplate)
+    val jobRecordStore = newJobRecordStore(redisTemplate)
+    val store =
+      RedisScheduledJobStore(
+        jobRecordStore = jobRecordStore,
+        sortedSetAccessor = newSortedSetAccessor(redisTemplate),
+        deduplicationStore = RedisDeduplicationStore(hashAccessor),
+        clock = { Instant.parse("2026-03-15T10:00:00Z") },
+      )
+    val firstPayload = samplePayload("job-scheduled-1")
+    val duplicatePayload = samplePayload("job-scheduled-2")
+
+    store.persistScheduled(firstPayload, Instant.parse("2026-03-15T10:05:00Z"))
+    val result = store.persistScheduled(duplicatePayload, Instant.parse("2026-03-15T10:10:00Z"))
+    val scheduledEntries =
+      redisTemplate.opsForZSet().rangeWithScores(RedisKeyspace.scheduled(), 0, -1).orEmpty()
+
+    assertEquals(false, result.accepted)
+    assertEquals(JobId("job-scheduled-1"), result.jobId)
+    assertEquals(1, scheduledEntries.size)
+    assertEquals("job-scheduled-1", scheduledEntries.first().value)
+    assertEquals(JobBucket.SCHEDULED, jobRecordStore.find(JobId("job-scheduled-1"))?.bucket)
+    assertEquals(null, jobRecordStore.find(JobId("job-scheduled-2")))
+  }
+
+  @Test
+  fun `scheduled persistence coalesces duplicate active deduplication key in redis`() {
+    val redisTemplate = newStringRedisTemplate()
+    flushRedis(redisTemplate)
+
+    val hashAccessor = newHashAccessor(redisTemplate)
+    val jobRecordStore = newJobRecordStore(redisTemplate)
+    val store =
+      RedisScheduledJobStore(
+        jobRecordStore = jobRecordStore,
+        sortedSetAccessor = newSortedSetAccessor(redisTemplate),
+        deduplicationStore = RedisDeduplicationStore(hashAccessor),
+        clock = { Instant.parse("2026-03-15T10:00:00Z") },
+      )
+    val firstPayload =
+      samplePayload("job-scheduled-1").copy(
+        deduplicationPolicy =
+          DeduplicationPolicy(
+            scope = DeduplicationScope.SCHEDULE,
+            strategy = DeduplicationStrategy.COALESCE,
+          ),
+      )
+    val duplicatePayload =
+      samplePayload("job-scheduled-2").copy(
+        deduplicationPolicy =
+          DeduplicationPolicy(
+            scope = DeduplicationScope.SCHEDULE,
+            strategy = DeduplicationStrategy.COALESCE,
+          ),
+      )
+
+    store.persistScheduled(firstPayload, Instant.parse("2026-03-15T10:05:00Z"))
+    val result = store.persistScheduled(duplicatePayload, Instant.parse("2026-03-15T10:10:00Z"))
+    val scheduledEntries =
+      redisTemplate.opsForZSet().rangeWithScores(RedisKeyspace.scheduled(), 0, -1).orEmpty()
+
+    assertEquals(false, result.accepted)
+    assertEquals(JobId("job-scheduled-1"), result.jobId)
+    assertEquals(1, scheduledEntries.size)
+    assertEquals("job-scheduled-1", scheduledEntries.first().value)
+    assertEquals(
+      Instant.parse("2026-03-15T10:10:00Z").toEpochMilli().toDouble(),
+      scheduledEntries.first().score,
+    )
+    assertEquals(JobBucket.SCHEDULED, jobRecordStore.find(JobId("job-scheduled-1"))?.bucket)
+    assertEquals(null, jobRecordStore.find(JobId("job-scheduled-2")))
   }
 
   @Test
@@ -112,5 +194,7 @@ class RedisBucketPersistenceIntegrationTest : RedisIntegrationSupport() {
           arguments = listOf(InvocationArgument("java.lang.String", "\"user-1\"")),
         ),
       queue = QueueName("billing"),
+      deduplicationKey = DeduplicationKey("invoice-user-1"),
+      deduplicationPolicy = DeduplicationPolicy(scope = DeduplicationScope.SCHEDULE),
     )
 }
