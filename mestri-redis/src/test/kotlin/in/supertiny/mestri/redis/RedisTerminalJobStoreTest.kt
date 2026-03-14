@@ -133,6 +133,17 @@ class RedisTerminalJobStoreTest {
       end: Long,
     ): List<String> = data[key].orEmpty().map { it.value }
 
+    override fun rangeByScore(
+      key: String,
+      minScoreInclusive: Double,
+      maxScoreInclusive: Double,
+    ): List<String> =
+      data[key]
+        .orEmpty()
+        .filter { it.score in minScoreInclusive..maxScoreInclusive }
+        .sortedBy { it.score }
+        .map { it.value }
+
     override fun remove(
       key: String,
       value: String,

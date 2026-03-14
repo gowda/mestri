@@ -213,6 +213,17 @@ class RedisFlowIntegrationTest {
       end: Long,
     ): List<String> = sortedSets[key].orEmpty().sortedBy { it.score }.map { it.value }
 
+    override fun rangeByScore(
+      key: String,
+      minScoreInclusive: Double,
+      maxScoreInclusive: Double,
+    ): List<String> =
+      sortedSets[key]
+        .orEmpty()
+        .filter { it.score in minScoreInclusive..maxScoreInclusive }
+        .sortedBy { it.score }
+        .map { it.value }
+
     override fun add(
       key: String,
       value: String,

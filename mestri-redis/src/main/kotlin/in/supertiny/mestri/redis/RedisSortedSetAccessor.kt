@@ -16,6 +16,14 @@ fun interface RedisSortedSetRangeLookup {
   ): List<String>
 }
 
+fun interface RedisSortedSetScoreRangeLookup {
+  fun rangeByScore(
+    key: String,
+    minScoreInclusive: Double,
+    maxScoreInclusive: Double,
+  ): List<String>
+}
+
 fun interface RedisSortedSetRemover {
   fun remove(
     key: String,
@@ -26,4 +34,5 @@ fun interface RedisSortedSetRemover {
 interface RedisSortedSetAccessor :
   RedisSortedSetWriter,
   RedisSortedSetRangeLookup,
+  RedisSortedSetScoreRangeLookup,
   RedisSortedSetRemover

@@ -24,6 +24,17 @@ class SpringRedisSortedSetAccessor(
       .orEmpty()
       .toList()
 
+  override fun rangeByScore(
+    key: String,
+    minScoreInclusive: Double,
+    maxScoreInclusive: Double,
+  ): List<String> =
+    redisTemplate
+      .opsForZSet()
+      .rangeByScore(key, minScoreInclusive, maxScoreInclusive)
+      .orEmpty()
+      .toList()
+
   override fun remove(
     key: String,
     value: String,

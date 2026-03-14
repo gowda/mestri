@@ -187,6 +187,12 @@ class RedisRetryExecutionHandlerTest {
       end: Long,
     ): List<String> = emptyList()
 
+    override fun rangeByScore(
+      key: String,
+      minScoreInclusive: Double,
+      maxScoreInclusive: Double,
+    ): List<String> = emptyList()
+
     override fun remove(
       key: String,
       value: String,
