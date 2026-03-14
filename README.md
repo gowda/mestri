@@ -1,5 +1,7 @@
 # Mestri
 
+[![Test](https://github.com/gowda/mestri/actions/workflows/test.yml/badge.svg)](https://github.com/gowda/mestri/actions/workflows/test.yml)
+
 Mestri is a Redis-backed background job system for Kotlin and Spring Boot with Sidekiq-style client/server middleware, worker architecture, and dashboard, plus JobRunr-compatible APIs.
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for the detailed architecture and delivery plan.
