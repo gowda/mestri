@@ -16,7 +16,7 @@ class RedisTerminalJobStore(
   fun persistDeleted(payload: JobPayload, recordedAt: Instant = clock()): RedisTerminalPersistenceResult =
     persist(bucket = JobBucket.DELETED, bucketKey = RedisKeyspace.deleted(), payload = payload, recordedAt = recordedAt)
 
-  private fun persist(
+  fun persist(
     bucket: JobBucket,
     bucketKey: String,
     payload: JobPayload,
