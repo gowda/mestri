@@ -134,6 +134,78 @@ class ClientMiddlewareChainTest {
     }
   }
 
+  @Test
+  fun `deduplication middleware assigns key and policy before terminal enqueue`() {
+    val chain =
+      ClientMiddlewareChain(
+        middlewares =
+          listOf(
+            DeduplicationClientMiddleware(
+              keyResolver = { DeduplicationKey("invoice-user-1") },
+              policyResolver = {
+                DeduplicationPolicy(scope = DeduplicationScope.ENQUEUE)
+              },
+            ),
+          ),
+        terminal =
+          ClientChain { request ->
+            assertEquals(DeduplicationKey("invoice-user-1"), request.deduplicationKey)
+            assertEquals(
+              DeduplicationPolicy(scope = DeduplicationScope.ENQUEUE),
+              request.deduplicationPolicy,
+            )
+            ClientEnqueueResult(
+              jobId = JobId("job-123"),
+              queue = request.queue,
+              metadata = request.metadata,
+            )
+          },
+      )
+
+    val result = chain.proceed(sampleRequest())
+
+    assertEquals(JobId("job-123"), result.jobId)
+  }
+
+  @Test
+  fun `deduplication middleware does not override explicit request dedup values`() {
+    val chain =
+      ClientMiddlewareChain(
+        middlewares =
+          listOf(
+            DeduplicationClientMiddleware(
+              keyResolver = { DeduplicationKey("resolved-key") },
+              policyResolver = {
+                DeduplicationPolicy(scope = DeduplicationScope.ENQUEUE)
+              },
+            ),
+          ),
+        terminal =
+          ClientChain { request ->
+            assertEquals(DeduplicationKey("explicit-key"), request.deduplicationKey)
+            assertEquals(
+              DeduplicationPolicy(scope = DeduplicationScope.SCHEDULE),
+              request.deduplicationPolicy,
+            )
+            ClientEnqueueResult(
+              jobId = JobId("job-123"),
+              queue = request.queue,
+              metadata = request.metadata,
+            )
+          },
+      )
+
+    val result =
+      chain.proceed(
+        sampleRequest().copy(
+          deduplicationKey = DeduplicationKey("explicit-key"),
+          deduplicationPolicy = DeduplicationPolicy(scope = DeduplicationScope.SCHEDULE),
+        ),
+      )
+
+    assertEquals(JobId("job-123"), result.jobId)
+  }
+
   private fun sampleRequest(): ClientEnqueueRequest =
     ClientEnqueueRequest(
       invocation =
