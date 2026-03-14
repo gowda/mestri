@@ -127,6 +127,8 @@ class RedisMaintenanceExecutor(
     val maxEntries = action.maxEntries ?: return false
     val bucketKey =
       when (action.bucketName) {
+        BUCKET_RETRY -> RedisKeyspace.retry()
+        BUCKET_DEAD -> RedisKeyspace.dead()
         BUCKET_SUCCEEDED -> RedisKeyspace.succeeded()
         BUCKET_DELETED -> RedisKeyspace.deleted()
         else -> return false
@@ -146,6 +148,8 @@ class RedisMaintenanceExecutor(
   }
 
   companion object {
+    const val BUCKET_RETRY: String = "retry"
+    const val BUCKET_DEAD: String = "dead"
     const val BUCKET_SUCCEEDED: String = "succeeded"
     const val BUCKET_DELETED: String = "deleted"
     const val METADATA_ORPHAN_RECOVERED_AT: String = "mestri.orphanRecoveredAt"

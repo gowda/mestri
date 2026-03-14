@@ -52,6 +52,43 @@ class RedisRetentionCleanupIntegrationTest : RedisIntegrationSupport() {
     assertEquals(JobId("job-new"), jobRecordStore.find(JobId("job-new"))?.jobId)
   }
 
+  @Test
+  fun `retention cleanup trims retry markers and deletes old records in real redis`() {
+    val redisTemplate = newStringRedisTemplate()
+    flushRedis(redisTemplate)
+    val jobRecordStore = newJobRecordStore(redisTemplate)
+    val sortedSetAccessor = newSortedSetAccessor(redisTemplate)
+    val scheduledStore = RedisScheduledJobStore(jobRecordStore, sortedSetAccessor)
+    val executor =
+      RedisMaintenanceExecutor(
+        jobRecordStore = jobRecordStore,
+        listAccessor = SpringRedisListAccessor(redisTemplate),
+        scheduledJobStore = scheduledStore,
+        sortedSetAccessor = sortedSetAccessor,
+        leaseStore = newLeaseStore(redisTemplate),
+        heartbeatStore = newHeartbeatStore(redisTemplate),
+      )
+
+    scheduledStore.persistRetry(samplePayload("job-old"), Instant.parse("2026-03-15T12:00:00Z"))
+    scheduledStore.persistRetry(samplePayload("job-new"), Instant.parse("2026-03-15T12:10:00Z"))
+
+    executor.execute(
+      MaintenancePlan(
+        createdAt = Instant.parse("2026-03-15T12:15:00Z"),
+        actions =
+          listOf(
+            CleanupRetainedBucket(RedisMaintenanceExecutor.BUCKET_RETRY, maxEntries = 1),
+          ),
+      ),
+      now = Instant.parse("2026-03-15T12:15:00Z"),
+    )
+
+    val entries = redisTemplate.opsForZSet().range(RedisKeyspace.retry(), 0, -1).orEmpty()
+    assertEquals(setOf("job-new"), entries)
+    assertNull(jobRecordStore.find(JobId("job-old")))
+    assertEquals(JobId("job-new"), jobRecordStore.find(JobId("job-new"))?.jobId)
+  }
+
   private fun samplePayload(jobId: String): JobPayload =
     JobPayload(
       jobId = JobId(jobId),

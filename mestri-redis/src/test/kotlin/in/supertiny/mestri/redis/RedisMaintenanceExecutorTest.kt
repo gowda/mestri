@@ -267,6 +267,62 @@ class RedisMaintenanceExecutorTest {
     )
   }
 
+  @Test
+  fun `retention cleanup trims retry bucket and deletes old records`() {
+    val hashAccessor = InMemoryRedisHashAccessor()
+    val setAccessor = InMemoryRedisSetAccessor()
+    val listAccessor = InMemoryRedisListAccessor()
+    val sortedSetAccessor = InMemoryRedisSortedSetAccessor()
+    val jobRecordStore =
+      RedisJobRecordStore(
+        hashAccessor = hashAccessor,
+        mapper = RedisJobRecordMapper(JacksonJobPayloadSerializer()),
+      )
+    val retryStore = RedisScheduledJobStore(jobRecordStore, sortedSetAccessor)
+    val executor =
+      RedisMaintenanceExecutor(
+        jobRecordStore = jobRecordStore,
+        listAccessor = listAccessor,
+        scheduledJobStore = retryStore,
+        sortedSetAccessor = sortedSetAccessor,
+        leaseStore = RedisJobLeaseStore(hashAccessor, setAccessor),
+        heartbeatStore = RedisWorkerHeartbeatStore(hashAccessor, setAccessor),
+      )
+    val oldPayload =
+      samplePayload(
+        metadata = mapOf("marker" to "old"),
+      ).copy(jobId = JobId("job-old"))
+    val newPayload =
+      samplePayload(
+        metadata = mapOf("marker" to "new"),
+      ).copy(jobId = JobId("job-new"))
+
+    retryStore.persistRetry(oldPayload, Instant.parse("2026-03-15T12:00:00Z"))
+    retryStore.persistRetry(newPayload, Instant.parse("2026-03-15T12:10:00Z"))
+
+    val report =
+      executor.execute(
+        MaintenancePlan(
+          createdAt = Instant.parse("2026-03-15T12:15:00Z"),
+          actions =
+            listOf(
+              CleanupRetainedBucket(RedisMaintenanceExecutor.BUCKET_RETRY, maxEntries = 1),
+            ),
+        ),
+        now = Instant.parse("2026-03-15T12:15:00Z"),
+      )
+
+    assertEquals(1, report.completedActions.size)
+    assertEquals(null, jobRecordStore.find(JobId("job-old")))
+    assertEquals(JobId("job-new"), jobRecordStore.find(JobId("job-new"))?.jobId)
+    assertEquals(
+      listOf("job-new"),
+      sortedSetAccessor.valuesFor(RedisKeyspace.retry()).map {
+        it.value
+      },
+    )
+  }
+
   private fun samplePayload(
     retryPolicy: RetryPolicy =
       RetryPolicy(
