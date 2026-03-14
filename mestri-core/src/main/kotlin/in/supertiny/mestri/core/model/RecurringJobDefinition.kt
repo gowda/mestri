@@ -10,7 +10,8 @@ data class RecurringJobDefinition(
   val retryPolicy: RetryPolicy = RetryPolicy.DEFAULT,
   val labels: Set<String> = emptySet(),
   val metadata: Map<String, String> = emptyMap(),
-  val deduplicationKey: String? = null,
+  val deduplicationKey: DeduplicationKey? = null,
+  val deduplicationPolicy: DeduplicationPolicy? = null,
   val enabled: Boolean = true,
   val createdAt: Instant,
   val updatedAt: Instant,
@@ -27,8 +28,8 @@ data class RecurringJobDefinition(
     require(metadata.values.none { it.isBlank() }) {
       "Recurring job definition metadata values must not be blank."
     }
-    require(deduplicationKey == null || deduplicationKey.isNotBlank()) {
-      "Recurring job definition deduplicationKey must not be blank when set."
+    require(deduplicationPolicy == null || deduplicationKey != null) {
+      "Recurring job definition deduplicationPolicy requires a deduplicationKey."
     }
     require(!updatedAt.isBefore(createdAt)) {
       "Recurring job definition updatedAt must not be before createdAt."

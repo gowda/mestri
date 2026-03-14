@@ -1,5 +1,7 @@
 package `in`.supertiny.mestri.core.serialization
 
+import `in`.supertiny.mestri.core.model.DeduplicationKey
+import `in`.supertiny.mestri.core.model.DeduplicationPolicy
 import `in`.supertiny.mestri.core.model.InvocationDescriptor
 import `in`.supertiny.mestri.core.model.JobId
 import `in`.supertiny.mestri.core.model.QueueName
@@ -12,7 +14,8 @@ data class JobPayload(
   val retryPolicy: RetryPolicy = RetryPolicy.DEFAULT,
   val labels: Set<String> = emptySet(),
   val metadata: Map<String, String> = emptyMap(),
-  val deduplicationKey: String? = null,
+  val deduplicationKey: DeduplicationKey? = null,
+  val deduplicationPolicy: DeduplicationPolicy? = null,
 ) {
   init {
     require(labels.none { it.isBlank() }) { "Job payload labels must not be blank." }
@@ -20,8 +23,8 @@ data class JobPayload(
     require(
       metadata.values.none { it.isBlank() },
     ) { "Job payload metadata values must not be blank." }
-    require(deduplicationKey == null || deduplicationKey.isNotBlank()) {
-      "Job payload deduplicationKey must not be blank when set."
+    require(deduplicationPolicy == null || deduplicationKey != null) {
+      "Job payload deduplicationPolicy requires a deduplicationKey."
     }
   }
 }

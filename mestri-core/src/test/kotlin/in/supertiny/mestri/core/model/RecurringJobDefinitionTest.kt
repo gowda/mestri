@@ -38,7 +38,8 @@ class RecurringJobDefinitionTest {
           ),
         labels = setOf("billing", "nightly"),
         metadata = mapOf("tenant" to "tenant-1"),
-        deduplicationKey = "nightly-billing:tenant-1",
+        deduplicationKey = DeduplicationKey("nightly-billing:tenant-1"),
+        deduplicationPolicy = DeduplicationPolicy(scope = DeduplicationScope.SCHEDULE),
         createdAt = createdAt,
         updatedAt = updatedAt,
         nextRunAt = nextRunAt,
@@ -69,6 +70,18 @@ class RecurringJobDefinitionTest {
         queue = QueueName("billing"),
         schedule = RecurringSchedule(cronExpression = "0 0 * * *"),
         metadata = mapOf("tenant" to ""),
+        createdAt = createdAt,
+        updatedAt = createdAt,
+      )
+    }
+
+    assertFailsWith<IllegalArgumentException> {
+      RecurringJobDefinition(
+        id = RecurringJobId("nightly-billing"),
+        invocation = sampleInvocation(),
+        queue = QueueName("billing"),
+        schedule = RecurringSchedule(cronExpression = "0 0 * * *"),
+        deduplicationPolicy = DeduplicationPolicy(scope = DeduplicationScope.SCHEDULE),
         createdAt = createdAt,
         updatedAt = createdAt,
       )

@@ -1,5 +1,6 @@
 package `in`.supertiny.mestri.redis
 
+import `in`.supertiny.mestri.core.model.DeduplicationKey
 import `in`.supertiny.mestri.core.model.InvocationArgument
 import `in`.supertiny.mestri.core.model.InvocationDescriptor
 import `in`.supertiny.mestri.core.model.InvocationMethod
@@ -71,7 +72,7 @@ class RedisJobRecordStoreTest {
             ),
           queue = QueueName("billing"),
           metadata = mapOf("traceId" to "trace-1"),
-          deduplicationKey = "invoice-user-1",
+          deduplicationKey = DeduplicationKey("invoice-user-1"),
         ),
       createdAt = Instant.parse("2026-03-14T10:00:00Z"),
       updatedAt = Instant.parse("2026-03-14T10:05:00Z"),

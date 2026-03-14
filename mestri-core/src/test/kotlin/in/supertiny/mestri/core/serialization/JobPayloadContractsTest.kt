@@ -1,5 +1,8 @@
 package `in`.supertiny.mestri.core.serialization
 
+import `in`.supertiny.mestri.core.model.DeduplicationKey
+import `in`.supertiny.mestri.core.model.DeduplicationPolicy
+import `in`.supertiny.mestri.core.model.DeduplicationScope
 import `in`.supertiny.mestri.core.model.InvocationArgument
 import `in`.supertiny.mestri.core.model.InvocationDescriptor
 import `in`.supertiny.mestri.core.model.InvocationMethod
@@ -34,7 +37,8 @@ class JobPayloadContractsTest {
         queue = QueueName("critical"),
         labels = setOf("high-priority"),
         metadata = mapOf("traceId" to "trace-1"),
-        deduplicationKey = "invoice-user-1",
+        deduplicationKey = DeduplicationKey("invoice-user-1"),
+        deduplicationPolicy = DeduplicationPolicy(scope = DeduplicationScope.ENQUEUE),
       )
 
     assertEquals(JobId("job-1"), payload.jobId)
@@ -66,7 +70,16 @@ class JobPayloadContractsTest {
   @Test
   fun `job payload rejects blank deduplication key`() {
     assertFailsWith<IllegalArgumentException> {
-      samplePayload().copy(deduplicationKey = "")
+      samplePayload().copy(deduplicationKey = DeduplicationKey(""))
+    }
+  }
+
+  @Test
+  fun `job payload requires key when deduplication policy is set`() {
+    assertFailsWith<IllegalArgumentException> {
+      samplePayload().copy(
+        deduplicationPolicy = DeduplicationPolicy(scope = DeduplicationScope.ENQUEUE),
+      )
     }
   }
 

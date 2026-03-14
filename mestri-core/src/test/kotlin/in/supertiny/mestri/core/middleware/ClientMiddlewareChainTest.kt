@@ -1,5 +1,8 @@
 package `in`.supertiny.mestri.core.middleware
 
+import `in`.supertiny.mestri.core.model.DeduplicationKey
+import `in`.supertiny.mestri.core.model.DeduplicationPolicy
+import `in`.supertiny.mestri.core.model.DeduplicationScope
 import `in`.supertiny.mestri.core.model.InvocationArgument
 import `in`.supertiny.mestri.core.model.InvocationDescriptor
 import `in`.supertiny.mestri.core.model.InvocationMethod
@@ -118,7 +121,16 @@ class ClientMiddlewareChainTest {
   @Test
   fun `client enqueue request rejects blank deduplication key`() {
     assertFailsWith<IllegalArgumentException> {
-      sampleRequest().copy(deduplicationKey = "")
+      sampleRequest().copy(deduplicationKey = DeduplicationKey(""))
+    }
+  }
+
+  @Test
+  fun `client enqueue request requires key when deduplication policy is set`() {
+    assertFailsWith<IllegalArgumentException> {
+      sampleRequest().copy(
+        deduplicationPolicy = DeduplicationPolicy(scope = DeduplicationScope.ENQUEUE),
+      )
     }
   }
 
