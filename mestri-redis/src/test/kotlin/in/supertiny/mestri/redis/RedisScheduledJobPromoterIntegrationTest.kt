@@ -101,6 +101,88 @@ class RedisScheduledJobPromoterIntegrationTest : RedisIntegrationSupport() {
     assertEquals(setOf("job-retry-future"), retryEntries)
   }
 
+  @Test
+  fun `promote due scheduled leaves not yet due scheduled jobs untouched`() {
+    val redisTemplate = newStringRedisTemplate()
+    flushRedis(redisTemplate)
+    val jobRecordStore = newJobRecordStore(redisTemplate)
+    val sortedSetAccessor = newSortedSetAccessor(redisTemplate)
+    val scheduledStore =
+      RedisScheduledJobStore(
+        jobRecordStore = jobRecordStore,
+        sortedSetAccessor = sortedSetAccessor,
+        clock = { Instant.parse("2026-03-15T12:00:00Z") },
+      )
+    val promoter =
+      RedisScheduledJobPromoter(
+        jobRecordStore = jobRecordStore,
+        sortedSetAccessor = sortedSetAccessor,
+        listAccessor = SpringRedisListAccessor(redisTemplate),
+      )
+    val payload = samplePayload("job-later")
+
+    scheduledStore.persistScheduled(payload, Instant.parse("2026-03-15T12:15:00Z"))
+
+    val result = promoter.promoteDueScheduled(now = Instant.parse("2026-03-15T12:10:00Z"))
+    val queueEntries =
+      redisTemplate
+        .opsForList()
+        .range(RedisKeyspace.queue(payload.queue), 0, -1)
+        .orEmpty()
+    val scheduledEntries =
+      redisTemplate
+        .opsForZSet()
+        .range(RedisKeyspace.scheduled(), 0, -1)
+        .orEmpty()
+
+    assertEquals(emptyList(), result.promotedJobIds)
+    assertEquals(emptyList(), result.skippedJobIds)
+    assertEquals(JobBucket.SCHEDULED, jobRecordStore.find(payload.jobId)?.bucket)
+    assertEquals(emptyList(), queueEntries)
+    assertEquals(setOf("job-later"), scheduledEntries)
+  }
+
+  @Test
+  fun `promote due retry leaves not yet due retry jobs untouched`() {
+    val redisTemplate = newStringRedisTemplate()
+    flushRedis(redisTemplate)
+    val jobRecordStore = newJobRecordStore(redisTemplate)
+    val sortedSetAccessor = newSortedSetAccessor(redisTemplate)
+    val scheduledStore =
+      RedisScheduledJobStore(
+        jobRecordStore = jobRecordStore,
+        sortedSetAccessor = sortedSetAccessor,
+        clock = { Instant.parse("2026-03-15T12:00:00Z") },
+      )
+    val promoter =
+      RedisScheduledJobPromoter(
+        jobRecordStore = jobRecordStore,
+        sortedSetAccessor = sortedSetAccessor,
+        listAccessor = SpringRedisListAccessor(redisTemplate),
+      )
+    val payload = samplePayload("job-retry-later")
+
+    scheduledStore.persistRetry(payload, Instant.parse("2026-03-15T12:15:00Z"))
+
+    val result = promoter.promoteDueRetry(now = Instant.parse("2026-03-15T12:10:00Z"))
+    val queueEntries =
+      redisTemplate
+        .opsForList()
+        .range(RedisKeyspace.queue(payload.queue), 0, -1)
+        .orEmpty()
+    val retryEntries =
+      redisTemplate
+        .opsForZSet()
+        .range(RedisKeyspace.retry(), 0, -1)
+        .orEmpty()
+
+    assertEquals(emptyList(), result.promotedJobIds)
+    assertEquals(emptyList(), result.skippedJobIds)
+    assertEquals(JobBucket.RETRY, jobRecordStore.find(payload.jobId)?.bucket)
+    assertEquals(emptyList(), queueEntries)
+    assertEquals(setOf("job-retry-later"), retryEntries)
+  }
+
   private fun samplePayload(jobId: String): JobPayload =
     JobPayload(
       jobId = JobId(jobId),
