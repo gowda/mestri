@@ -60,15 +60,23 @@ Mestri uses Redis-native operational buckets rather than a single persisted stat
 Each job is stored as a Redis hash containing:
 
 - job id
+- current bucket
+- serialized job payload
+- payload format
+- created timestamp
+- updated timestamp
+
+The default job payload contains:
+
+- job id
 - invocation descriptor
 - queue
-- arguments
-- metadata/tags
 - retry policy
-- timestamps
-- attempt counters
+- labels
+- metadata
 - deduplication key
-- current bucket and execution metadata
+
+This keeps the Redis job record flat and easy to query while allowing payload evolution through a versioned mapper.
 
 ## Invocation Model
 
@@ -180,6 +188,40 @@ Recurring jobs are stored separately with:
 - queue
 - invocation descriptor
 - next run timestamp
+
+## Redis Primitive Mapping
+
+The current Redis data model is intentionally explicit about primitive usage:
+
+- Redis hashes:
+  - job records
+  - worker heartbeats
+  - job leases
+- Redis lists:
+  - immediate queue buckets
+- Redis sorted sets:
+  - `scheduled`
+  - `retry`
+  - `succeeded`
+  - `deleted`
+  - later `dead`
+- Redis sets:
+  - process registry
+
+This keeps the system close to Redis semantics instead of hiding storage behind a relational-style state layer.
+
+## Running State
+
+`running` is a logical runtime bucket, not a primary persisted Redis collection.
+
+It is derived from:
+
+- job leases
+- worker heartbeat hashes
+- process registry membership
+- later per-process or per-worker in-flight work metadata
+
+This is intentionally closer to Sidekiq’s runtime model than a standalone `running` list or sorted set.
 
 ## Deduplication
 
@@ -325,8 +367,10 @@ For transition periods, the Spring Boot starter may optionally read legacy `org.
   - health contracts
 - `mestri-redis`
   - Redis key schema
-  - atomic scripts and storage operations
-  - promotion, retention, maintenance, recovery
+  - payload serialization
+  - hash/list/set/sorted-set access abstractions
+  - job record, queue, schedule, lease, heartbeat, and retention persistence primitives
+  - later atomic scripts, promotion, maintenance, and recovery
 - `mestri-spring-boot-starter`
   - auto-configuration
   - Spring integration
