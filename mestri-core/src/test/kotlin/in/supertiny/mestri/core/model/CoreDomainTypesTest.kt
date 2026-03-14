@@ -25,6 +25,11 @@ class CoreDomainTypesTest {
   }
 
   @Test
+  fun `default queue name is stable`() {
+    assertEquals("default", QueueName.DEFAULT.value)
+  }
+
+  @Test
   fun `retry policy none disables retries`() {
     assertEquals(0, RetryPolicy.NONE.maxAttempts)
   }
@@ -42,6 +47,7 @@ class CoreDomainTypesTest {
 
     assertEquals(2.days, policy.retentionFor(JobBucket.SUCCEEDED))
     assertEquals(14.days, policy.retentionFor(JobBucket.DELETED))
+    assertEquals(14.days, policy.retentionFor(JobBucket.QUEUED))
   }
 
   @Test

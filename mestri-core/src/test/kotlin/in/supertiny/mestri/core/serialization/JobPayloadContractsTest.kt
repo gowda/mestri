@@ -57,6 +57,20 @@ class JobPayloadContractsTest {
     }
   }
 
+  @Test
+  fun `job payload rejects blank metadata key`() {
+    assertFailsWith<IllegalArgumentException> {
+      samplePayload().copy(metadata = mapOf("" to "trace-1"))
+    }
+  }
+
+  @Test
+  fun `job payload rejects blank deduplication key`() {
+    assertFailsWith<IllegalArgumentException> {
+      samplePayload().copy(deduplicationKey = "")
+    }
+  }
+
   private fun samplePayload(): JobPayload =
     JobPayload(
       jobId = JobId("job-1"),

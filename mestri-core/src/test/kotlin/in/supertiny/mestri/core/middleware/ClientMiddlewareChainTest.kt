@@ -9,6 +9,7 @@ import `in`.supertiny.mestri.core.model.SpringBeanTarget
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class ClientMiddlewareChainTest {
 
@@ -82,9 +83,44 @@ class ClientMiddlewareChainTest {
   }
 
   @Test
+  fun `client middleware chain without middleware delegates directly to terminal`() {
+    val chain =
+      ClientMiddlewareChain(
+        middlewares = emptyList(),
+        terminal =
+          ClientChain { request ->
+            ClientEnqueueResult(
+              jobId = JobId("terminal-only"),
+              queue = request.queue,
+              metadata = request.metadata,
+            )
+          },
+      )
+
+    val result = chain.proceed(sampleRequest().copy(metadata = mapOf("traceId" to "trace-1")))
+
+    assertEquals(JobId("terminal-only"), result.jobId)
+    assertEquals("trace-1", result.metadata["traceId"])
+  }
+
+  @Test
   fun `client enqueue request rejects blank metadata`() {
     assertFailsWith<IllegalArgumentException> {
       sampleRequest().copy(metadata = mapOf("traceId" to ""))
+    }
+  }
+
+  @Test
+  fun `client enqueue request rejects blank metadata key`() {
+    assertFailsWith<IllegalArgumentException> {
+      sampleRequest().copy(metadata = mapOf("" to "trace-1"))
+    }
+  }
+
+  @Test
+  fun `client enqueue request rejects blank deduplication key`() {
+    assertFailsWith<IllegalArgumentException> {
+      sampleRequest().copy(deduplicationKey = "")
     }
   }
 

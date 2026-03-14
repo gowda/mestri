@@ -82,9 +82,47 @@ class ServerMiddlewareChainTest {
   }
 
   @Test
+  fun `server middleware chain without middleware delegates directly to terminal`() {
+    val chain =
+      ServerMiddlewareChain(
+        middlewares = emptyList(),
+        terminal =
+          ServerChain { request ->
+            ServerExecutionResult(
+              outcome = ServerExecutionOutcome.SUCCEEDED,
+              metadata = request.metadata + ("attempt" to request.attempt.toString()),
+            )
+          },
+      )
+
+    val result = chain.proceed(sampleRequest().copy(metadata = mapOf("traceId" to "trace-1")))
+
+    assertEquals(ServerExecutionOutcome.SUCCEEDED, result.outcome)
+    assertEquals("1", result.metadata["attempt"])
+    assertEquals("trace-1", result.metadata["traceId"])
+  }
+
+  @Test
   fun `server execution request rejects attempt smaller than one`() {
     assertFailsWith<IllegalArgumentException> {
       sampleRequest().copy(attempt = 0)
+    }
+  }
+
+  @Test
+  fun `server execution request rejects blank metadata key`() {
+    assertFailsWith<IllegalArgumentException> {
+      sampleRequest().copy(metadata = mapOf("" to "trace-1"))
+    }
+  }
+
+  @Test
+  fun `server execution result rejects blank error message`() {
+    assertFailsWith<IllegalArgumentException> {
+      ServerExecutionResult(
+        outcome = ServerExecutionOutcome.TERMINAL_FAILURE,
+        errorMessage = "",
+      )
     }
   }
 

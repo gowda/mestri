@@ -38,6 +38,20 @@ class RuntimeContractsTest {
   }
 
   @Test
+  fun `worker heartbeat reports positive ttl before expiry`() {
+    val heartbeat =
+      WorkerHeartbeat(
+        workerId = WorkerId("worker-1"),
+        processId = ProcessId("process-1"),
+        queues = setOf("default"),
+        recordedAt = Instant.parse("2026-03-14T10:00:00Z"),
+        expiresAt = Instant.parse("2026-03-14T10:00:30Z"),
+      )
+
+    assertTrue(heartbeat.ttl(Instant.parse("2026-03-14T10:00:10Z")).seconds > 0)
+  }
+
+  @Test
   fun `maintenance cleanup bucket rejects blank bucket name`() {
     assertFailsWith<IllegalArgumentException> {
       CleanupRetainedBucket(bucketName = "")
@@ -53,6 +67,18 @@ class RuntimeContractsTest {
         queues = setOf(""),
         recordedAt = Instant.parse("2026-03-14T10:00:00Z"),
         expiresAt = Instant.parse("2026-03-14T10:00:30Z"),
+      )
+    }
+  }
+
+  @Test
+  fun `job lease rejects non increasing expiry`() {
+    assertFailsWith<IllegalArgumentException> {
+      JobLease(
+        jobId = JobId("job-1"),
+        workerId = WorkerId("worker-1"),
+        acquiredAt = Instant.parse("2026-03-14T10:00:00Z"),
+        expiresAt = Instant.parse("2026-03-14T10:00:00Z"),
       )
     }
   }
