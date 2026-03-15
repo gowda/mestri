@@ -1,5 +1,11 @@
 package `in`.supertiny.mestri.spring.boot.autoconfigure
 
+import `in`.supertiny.mestri.core.health.MestriHealthObservation
+import `in`.supertiny.mestri.core.health.MestriHealthService
+import `in`.supertiny.mestri.core.health.MestriHealthStatus
+import `in`.supertiny.mestri.core.health.RedisHealth
+import `in`.supertiny.mestri.core.health.SchedulerHealth
+import `in`.supertiny.mestri.core.health.WorkerHealth
 import `in`.supertiny.mestri.core.middleware.ClientChain
 import `in`.supertiny.mestri.core.middleware.ClientEnqueueRequest
 import `in`.supertiny.mestri.core.middleware.ClientEnqueueResult
@@ -33,6 +39,7 @@ import `in`.supertiny.mestri.redis.RedisScheduledJobPromoter
 import `in`.supertiny.mestri.redis.RedisScheduledJobStore
 import `in`.supertiny.mestri.redis.RedisTerminalJobStore
 import org.mockito.Mockito.mock
+import org.springframework.boot.actuate.health.Status
 import org.springframework.boot.autoconfigure.AutoConfigurations
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
 import org.springframework.boot.test.context.runner.ApplicationContextRunner
@@ -188,6 +195,31 @@ class MestriAutoConfigurationTest {
       }
   }
 
+  @Test
+  fun `health indicator is registered when a health service is available`() {
+    contextRunner
+      .withUserConfiguration(HealthServiceConfiguration::class.java)
+      .run { context ->
+        val healthIndicator = context.getBean(MestriHealthIndicator::class.java)
+        val health = healthIndicator.health()
+
+        assertEquals(Status("DEGRADED"), health.status)
+        assertEquals(true, health.details["redisReachable"])
+        assertEquals(2, health.details["activeWorkers"])
+        assertEquals("configured threshold exceeded", health.details["reason"])
+      }
+  }
+
+  @Test
+  fun `health indicator backs off when health is disabled`() {
+    contextRunner
+      .withPropertyValues("mestri.health.enabled=false")
+      .withUserConfiguration(HealthServiceConfiguration::class.java)
+      .run { context ->
+        kotlin.test.assertFalse(context.containsBean("mestriHealthIndicator"))
+      }
+  }
+
   @Configuration(proxyBeanMethods = false)
   private class TestRedisConfiguration {
     @Bean
@@ -244,6 +276,29 @@ class MestriAutoConfigurationTest {
         name = "low-server",
         nextValue = "low",
         order = Ordered.LOWEST_PRECEDENCE,
+      )
+  }
+
+  @Configuration(proxyBeanMethods = false)
+  private class HealthServiceConfiguration {
+    @Bean
+    fun mestriHealthService(): MestriHealthService =
+      MestriHealthService(
+        observationSource = { now ->
+          MestriHealthObservation(
+            checkedAt = now,
+            redis = RedisHealth(reachable = true, checkedAt = now),
+            workers = WorkerHealth(activeWorkers = 2),
+            scheduler =
+              SchedulerHealth(
+                schedulerEnabled = true,
+                promoterEnabled = true,
+                checkedAt = now,
+              ),
+            details = mapOf("reason" to "configured threshold exceeded"),
+          )
+        },
+        statusEvaluator = { MestriHealthStatus.DEGRADED },
       )
   }
 

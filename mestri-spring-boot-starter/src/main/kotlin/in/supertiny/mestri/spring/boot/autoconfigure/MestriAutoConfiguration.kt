@@ -1,6 +1,7 @@
 package `in`.supertiny.mestri.spring.boot.autoconfigure
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import `in`.supertiny.mestri.core.health.MestriHealthService
 import `in`.supertiny.mestri.core.middleware.ClientMiddleware
 import `in`.supertiny.mestri.core.middleware.ServerMiddleware
 import `in`.supertiny.mestri.core.runtime.DefaultMaintenancePlanner
@@ -429,4 +430,16 @@ class MestriAutoConfiguration {
       maintenanceLoop = maintenanceLoop,
       interval = mestriProperties.worker.heartbeatInterval,
     )
+
+  @Bean
+  @ConditionalOnBean(MestriHealthService::class)
+  @ConditionalOnProperty(
+    prefix = "mestri.health",
+    name = ["enabled"],
+    havingValue = "true",
+    matchIfMissing = true,
+  )
+  @ConditionalOnMissingBean
+  fun mestriHealthIndicator(mestriHealthService: MestriHealthService): MestriHealthIndicator =
+    MestriHealthIndicator(mestriHealthService)
 }
