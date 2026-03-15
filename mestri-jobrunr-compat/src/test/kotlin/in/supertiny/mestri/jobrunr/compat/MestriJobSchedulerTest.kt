@@ -14,6 +14,7 @@ import `in`.supertiny.mestri.redis.RedisJobRecordStore
 import `in`.supertiny.mestri.redis.RedisListAccessor
 import `in`.supertiny.mestri.redis.RedisScheduledJobStore
 import `in`.supertiny.mestri.redis.RedisSortedSetAccessor
+import org.jobrunr.jobs.annotations.Job
 import org.jobrunr.jobs.lambdas.JobLambda
 import org.jobrunr.scheduling.BackgroundJob
 import java.time.Instant
@@ -86,6 +87,21 @@ class MestriJobSchedulerTest {
     assertEquals(QueueName("billing"), storedRecord.payload.queue)
   }
 
+  @Test
+  fun `job annotation metadata influences payload naming and retry behavior`() {
+    val scheduler = scheduler(jobId = "job-compat-annotated")
+
+    scheduler.enqueue(annotatedJobLambda())
+    val storedRecord = scheduler.recordStore.find(MestriJobId("job-compat-annotated"))
+
+    assertNotNull(storedRecord)
+    assertEquals(
+      "Generate invoice",
+      storedRecord.payload.metadata[MestriJobScheduler.METADATA_JOB_NAME],
+    )
+    assertEquals(4, storedRecord.payload.retryPolicy.maxAttempts)
+  }
+
   private fun scheduler(jobId: String): TestScheduler {
     val hashAccessor = InMemoryHashAccessor()
     val listAccessor = InMemoryListAccessor()
@@ -134,6 +150,24 @@ class MestriJobSchedulerTest {
             parameterTypeNames = listOf("java.lang.String"),
           ),
         arguments = listOf(InvocationArgument("java.lang.String", "\"invoice-42\"")),
+        labels = setOf("compat"),
+      )
+    }
+
+  private fun annotatedJobLambda(): JobLambda =
+    JobLambda {
+      InvocationDescriptor(
+        target =
+          SpringBeanTarget(
+            className = AnnotatedInvoiceJobs::class.java.name,
+            beanName = "invoiceJobs",
+          ),
+        method =
+          InvocationMethod(
+            name = "generateAnnotatedInvoice",
+            parameterTypeNames = listOf("java.lang.String"),
+          ),
+        arguments = listOf(InvocationArgument("java.lang.String", "\"invoice-99\"")),
         labels = setOf("compat"),
       )
     }
@@ -223,4 +257,11 @@ class MestriJobSchedulerTest {
     val listAccessor: InMemoryListAccessor,
     val sortedSetAccessor: InMemorySortedSetAccessor,
   ) : org.jobrunr.scheduling.JobScheduler by scheduler
+
+  private class AnnotatedInvoiceJobs {
+    @Job(name = "Generate invoice", retries = 3)
+    fun generateAnnotatedInvoice(invoiceId: String) {
+      invoiceId.length
+    }
+  }
 }
