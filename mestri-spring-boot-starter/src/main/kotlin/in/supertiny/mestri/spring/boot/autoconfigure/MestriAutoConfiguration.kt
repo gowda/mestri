@@ -18,6 +18,7 @@ import `in`.supertiny.mestri.core.runtime.ServerExecutionPipeline
 import `in`.supertiny.mestri.core.scheduling.RecurringJobDefinitionStore
 import `in`.supertiny.mestri.core.scheduling.RecurringJobScheduler
 import `in`.supertiny.mestri.core.serialization.JobPayloadSerializer
+import `in`.supertiny.mestri.jobrunr.compat.MestriJobScheduler
 import `in`.supertiny.mestri.redis.JacksonJobPayloadSerializer
 import `in`.supertiny.mestri.redis.JacksonRecurringJobDefinitionSerializer
 import `in`.supertiny.mestri.redis.RedisDeadLetterExecutionHandler
@@ -44,6 +45,7 @@ import `in`.supertiny.mestri.redis.SpringRedisHashAccessor
 import `in`.supertiny.mestri.redis.SpringRedisQueueAccessor
 import `in`.supertiny.mestri.redis.SpringRedisSetAccessor
 import `in`.supertiny.mestri.redis.SpringRedisSortedSetAccessor
+import org.jobrunr.scheduling.JobScheduler
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.boot.autoconfigure.AutoConfiguration
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
@@ -58,6 +60,8 @@ import org.springframework.context.annotation.Bean
 import org.springframework.data.redis.core.StringRedisTemplate
 import java.time.Clock
 import java.time.Instant
+import kotlin.time.toKotlinDuration
+import `in`.supertiny.mestri.core.model.JobId as MestriJobId
 
 @AutoConfiguration(
   after = [RedisAutoConfiguration::class, RedisRepositoriesAutoConfiguration::class],
@@ -196,6 +200,26 @@ class MestriAutoConfiguration {
       listAccessor = redisQueueAccessor,
       deduplicationStore = redisDeduplicationStore,
       clock = { Instant.now(clock) },
+    )
+
+  @Bean
+  @ConditionalOnMissingBean(JobScheduler::class)
+  fun mestriJobScheduler(
+    mestriProperties: MestriProperties,
+    redisImmediateJobEnqueuer: RedisImmediateJobEnqueuer,
+  ): JobScheduler =
+    MestriJobScheduler(
+      immediateJobEnqueuer = redisImmediateJobEnqueuer,
+      defaultQueue = QueueName(mestriProperties.worker.queues.first()),
+      defaultRetryPolicy =
+        `in`.supertiny.mestri.core.model.RetryPolicy(
+          maxAttempts = mestriProperties.retries.defaultAttempts,
+          initialDelay = mestriProperties.retries.initialDelay.toKotlinDuration(),
+          maxDelay = mestriProperties.retries.maxDelay.toKotlinDuration(),
+          backoffMultiplier = mestriProperties.retries.backoffMultiplier,
+          useJitter = mestriProperties.retries.jitter,
+        ),
+      jobIdGenerator = MestriJobId::random,
     )
 
   @Bean

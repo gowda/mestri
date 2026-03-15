@@ -41,6 +41,7 @@ import `in`.supertiny.mestri.redis.RedisQueueReservationStore
 import `in`.supertiny.mestri.redis.RedisScheduledJobPromoter
 import `in`.supertiny.mestri.redis.RedisScheduledJobStore
 import `in`.supertiny.mestri.redis.RedisTerminalJobStore
+import org.jobrunr.scheduling.JobScheduler
 import org.mockito.Mockito.mock
 import org.springframework.boot.actuate.health.Status
 import org.springframework.boot.autoconfigure.AutoConfigurations
@@ -72,6 +73,7 @@ class MestriAutoConfigurationTest {
   fun `auto configuration registers core redis runtime beans`() {
     contextRunner.run { context ->
       assertSingleBean<MestriProperties>(context)
+      assertSingleBean<JobScheduler>(context)
       assertSingleBean<ClientMiddlewareRegistry>(context)
       assertSingleBean<JobHandlerInvoker>(context)
       assertSingleBean<JobPayloadSerializer>(context)
