@@ -218,6 +218,32 @@ class MestriAutoConfigurationTest {
   }
 
   @Test
+  fun `health indicator reports up status`() {
+    contextRunner
+      .withUserConfiguration(UpHealthServiceConfiguration::class.java)
+      .run { context ->
+        val healthIndicator = context.getBean(MestriHealthIndicator::class.java)
+        val health = healthIndicator.health()
+
+        assertEquals(Status.UP, health.status)
+        assertEquals(true, health.details["redisReachable"])
+      }
+  }
+
+  @Test
+  fun `health indicator reports down status`() {
+    contextRunner
+      .withUserConfiguration(DownHealthServiceConfiguration::class.java)
+      .run { context ->
+        val healthIndicator = context.getBean(MestriHealthIndicator::class.java)
+        val health = healthIndicator.health()
+
+        assertEquals(Status.DOWN, health.status)
+        assertEquals("redis unreachable", health.details["reason"])
+      }
+  }
+
+  @Test
   fun `health service is auto configured when health is enabled`() {
     contextRunner.run { context ->
       assertSingleBean<MestriHealthObservationSource>(context)
@@ -321,6 +347,53 @@ class MestriAutoConfigurationTest {
               details = mapOf("reason" to "configured threshold exceeded"),
             )
           },
+      )
+  }
+
+  @Configuration(proxyBeanMethods = false)
+  private class UpHealthServiceConfiguration {
+    @Bean
+    fun mestriHealthService(): MestriHealthService =
+      MestriHealthService(
+        observationSource = { now ->
+          MestriHealthObservation(
+            checkedAt = now,
+            redis = RedisHealth(reachable = true, checkedAt = now),
+            workers = WorkerHealth(activeWorkers = 2),
+            scheduler =
+              SchedulerHealth(
+                schedulerEnabled = true,
+                promoterEnabled = true,
+                checkedAt = now,
+              ),
+          )
+        },
+      )
+  }
+
+  @Configuration(proxyBeanMethods = false)
+  private class DownHealthServiceConfiguration {
+    @Bean
+    fun mestriHealthService(): MestriHealthService =
+      MestriHealthService(
+        observationSource = { now ->
+          MestriHealthObservation(
+            checkedAt = now,
+            redis =
+              RedisHealth(
+                reachable = false,
+                checkedAt = now,
+                errorMessage = "timeout",
+              ),
+            workers = WorkerHealth(activeWorkers = 0),
+            scheduler =
+              SchedulerHealth(
+                schedulerEnabled = false,
+                promoterEnabled = false,
+                checkedAt = now,
+              ),
+          )
+        },
       )
   }
 
