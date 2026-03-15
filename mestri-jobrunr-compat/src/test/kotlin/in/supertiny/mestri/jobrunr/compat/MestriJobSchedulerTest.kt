@@ -12,7 +12,10 @@ import `in`.supertiny.mestri.redis.RedisImmediateJobEnqueuer
 import `in`.supertiny.mestri.redis.RedisJobRecordMapper
 import `in`.supertiny.mestri.redis.RedisJobRecordStore
 import `in`.supertiny.mestri.redis.RedisListAccessor
+import `in`.supertiny.mestri.redis.RedisScheduledJobStore
+import `in`.supertiny.mestri.redis.RedisSortedSetAccessor
 import org.jobrunr.jobs.lambdas.JobLambda
+import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -23,6 +26,7 @@ class MestriJobSchedulerTest {
   fun `enqueue persists queued payload and returns compat job id`() {
     val hashAccessor = InMemoryHashAccessor()
     val listAccessor = InMemoryListAccessor()
+    val sortedSetAccessor = InMemorySortedSetAccessor()
     val recordStore =
       RedisJobRecordStore(
         hashAccessor = hashAccessor,
@@ -33,9 +37,15 @@ class MestriJobSchedulerTest {
         jobRecordStore = recordStore,
         listAccessor = listAccessor,
       )
+    val scheduledStore =
+      RedisScheduledJobStore(
+        jobRecordStore = recordStore,
+        sortedSetAccessor = sortedSetAccessor,
+      )
     val scheduler =
       MestriJobScheduler(
         immediateJobEnqueuer = enqueuer,
+        scheduledJobStore = scheduledStore,
         defaultQueue = QueueName("billing"),
         jobIdGenerator = { MestriJobId("job-compat-1") },
       )
@@ -49,6 +59,45 @@ class MestriJobSchedulerTest {
     assertEquals(JobBucket.QUEUED, storedRecord.bucket)
     assertEquals(QueueName("billing"), storedRecord.payload.queue)
     assertEquals(setOf("compat"), storedRecord.payload.labels)
+  }
+
+  @Test
+  fun `schedule persists scheduled payload and returns compat job id`() {
+    val hashAccessor = InMemoryHashAccessor()
+    val listAccessor = InMemoryListAccessor()
+    val sortedSetAccessor = InMemorySortedSetAccessor()
+    val recordStore =
+      RedisJobRecordStore(
+        hashAccessor = hashAccessor,
+        mapper = RedisJobRecordMapper(JacksonJobPayloadSerializer()),
+      )
+    val enqueuer =
+      RedisImmediateJobEnqueuer(
+        jobRecordStore = recordStore,
+        listAccessor = listAccessor,
+      )
+    val scheduledStore =
+      RedisScheduledJobStore(
+        jobRecordStore = recordStore,
+        sortedSetAccessor = sortedSetAccessor,
+      )
+    val scheduler =
+      MestriJobScheduler(
+        immediateJobEnqueuer = enqueuer,
+        scheduledJobStore = scheduledStore,
+        defaultQueue = QueueName("billing"),
+        jobIdGenerator = { MestriJobId("job-compat-2") },
+      )
+
+    val jobId = scheduler.schedule(Instant.parse("2026-03-15T14:00:00Z"), sampleJobLambda())
+    val storedRecord = recordStore.find(MestriJobId("job-compat-2"))
+
+    assertEquals("job-compat-2", jobId.value)
+    assertEquals(1, sortedSetAccessor.range("mestri:scheduled", 0, 10).size)
+    assertEquals("job-compat-2", sortedSetAccessor.range("mestri:scheduled", 0, 10).single())
+    assertNotNull(storedRecord)
+    assertEquals(JobBucket.SCHEDULED, storedRecord.bucket)
+    assertEquals(QueueName("billing"), storedRecord.payload.queue)
   }
 
   private fun sampleJobLambda(): JobLambda =
@@ -97,5 +146,54 @@ class MestriJobSchedulerTest {
     }
 
     fun values(key: String): List<String> = values[key].orEmpty()
+  }
+
+  private class InMemorySortedSetAccessor : RedisSortedSetAccessor {
+    private val values = linkedMapOf<String, MutableMap<String, Double>>()
+
+    override fun add(
+      key: String,
+      value: String,
+      score: Double,
+    ) {
+      values.getOrPut(key) { linkedMapOf() }[value] = score
+    }
+
+    override fun range(
+      key: String,
+      start: Long,
+      end: Long,
+    ): List<String> =
+      values[key]
+        .orEmpty()
+        .entries
+        .sortedBy { (_, score) -> score }
+        .map { (value, _) -> value }
+        .let { ranked ->
+          if (ranked.isEmpty() || start > ranked.lastIndex) {
+            emptyList()
+          } else {
+            ranked.subList(start.toInt(), (end.toInt().coerceAtMost(ranked.lastIndex)) + 1)
+          }
+        }
+
+    override fun rangeByScore(
+      key: String,
+      minScoreInclusive: Double,
+      maxScoreInclusive: Double,
+    ): List<String> =
+      values[key]
+        .orEmpty()
+        .entries
+        .filter { (_, score) -> score in minScoreInclusive..maxScoreInclusive }
+        .sortedBy { (_, score) -> score }
+        .map { (value, _) -> value }
+
+    override fun remove(
+      key: String,
+      value: String,
+    ) {
+      values[key]?.remove(value)
+    }
   }
 }

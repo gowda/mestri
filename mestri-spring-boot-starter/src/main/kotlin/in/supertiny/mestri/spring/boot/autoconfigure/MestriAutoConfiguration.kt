@@ -207,9 +207,11 @@ class MestriAutoConfiguration {
   fun mestriJobScheduler(
     mestriProperties: MestriProperties,
     redisImmediateJobEnqueuer: RedisImmediateJobEnqueuer,
+    redisScheduledJobStore: RedisScheduledJobStore,
   ): JobScheduler =
     MestriJobScheduler(
       immediateJobEnqueuer = redisImmediateJobEnqueuer,
+      scheduledJobStore = redisScheduledJobStore,
       defaultQueue = QueueName(mestriProperties.worker.queues.first()),
       defaultRetryPolicy =
         `in`.supertiny.mestri.core.model.RetryPolicy(
