@@ -1,7 +1,7 @@
 plugins {
-  kotlin("jvm") version "1.9.25" apply false
-  kotlin("plugin.spring") version "1.9.25" apply false
-  id("org.jlleitschuh.gradle.ktlint") version "14.1.0" apply false
+  kotlin("jvm") version "2.3.10" apply false
+  kotlin("plugin.spring") version "2.3.10" apply false
+  id("org.jlleitschuh.gradle.ktlint") version "14.2.0" apply false
   id("org.springframework.boot") version "3.3.13" apply false
   id("io.spring.dependency-management") version "1.1.7" apply false
   `java-library`
@@ -50,7 +50,7 @@ subprojects {
 
   dependencies {
     "implementation"(kotlin("reflect"))
-    "testImplementation"(platform("org.junit:junit-bom:5.11.4"))
+    "testImplementation"(platform("org.junit:junit-bom:5.14.3"))
     "testImplementation"("org.junit.jupiter:junit-jupiter")
     "testImplementation"(kotlin("test"))
   }
