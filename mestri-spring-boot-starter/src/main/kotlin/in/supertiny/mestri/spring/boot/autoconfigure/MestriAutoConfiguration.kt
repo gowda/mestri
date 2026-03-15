@@ -1,9 +1,11 @@
 package `in`.supertiny.mestri.spring.boot.autoconfigure
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import `in`.supertiny.mestri.core.health.MestriHealthObservationSource
 import `in`.supertiny.mestri.core.health.MestriHealthService
 import `in`.supertiny.mestri.core.middleware.ClientMiddleware
 import `in`.supertiny.mestri.core.middleware.ServerMiddleware
+import `in`.supertiny.mestri.core.model.QueueName
 import `in`.supertiny.mestri.core.runtime.DefaultMaintenancePlanner
 import `in`.supertiny.mestri.core.runtime.JobHandlerInvoker
 import `in`.supertiny.mestri.core.runtime.MaintenanceLoop
@@ -24,6 +26,7 @@ import `in`.supertiny.mestri.redis.RedisJobRecordMapper
 import `in`.supertiny.mestri.redis.RedisJobRecordStore
 import `in`.supertiny.mestri.redis.RedisMaintenanceExecutor
 import `in`.supertiny.mestri.redis.RedisMaintenanceSnapshotSource
+import `in`.supertiny.mestri.redis.RedisMestriHealthObservationSource
 import `in`.supertiny.mestri.redis.RedisQueueAccessor
 import `in`.supertiny.mestri.redis.RedisQueueReservationStore
 import `in`.supertiny.mestri.redis.RedisRecurringJobDefinitionStore
@@ -429,6 +432,52 @@ class MestriAutoConfiguration {
     MestriMaintenanceLifecycle(
       maintenanceLoop = maintenanceLoop,
       interval = mestriProperties.worker.heartbeatInterval,
+    )
+
+  @Bean
+  @ConditionalOnBean(StringRedisTemplate::class)
+  @ConditionalOnProperty(
+    prefix = "mestri.health",
+    name = ["enabled"],
+    havingValue = "true",
+    matchIfMissing = true,
+  )
+  @ConditionalOnMissingBean
+  fun mestriHealthObservationSource(
+    mestriProperties: MestriProperties,
+    stringRedisTemplate: StringRedisTemplate,
+    redisJobRecordStore: RedisJobRecordStore,
+    redisJobLeaseStore: RedisJobLeaseStore,
+    redisWorkerHeartbeatStore: RedisWorkerHeartbeatStore,
+    clock: Clock,
+  ): MestriHealthObservationSource =
+    RedisMestriHealthObservationSource(
+      redisTemplate = stringRedisTemplate,
+      jobRecordStore = redisJobRecordStore,
+      leaseStore = redisJobLeaseStore,
+      heartbeatStore = redisWorkerHeartbeatStore,
+      queues = mestriProperties.worker.queues.map(::QueueName),
+      schedulerEnabled = mestriProperties.scheduler.enabled,
+      promoterEnabled = mestriProperties.scheduler.enabled,
+      clock = clock,
+    )
+
+  @Bean
+  @ConditionalOnBean(MestriHealthObservationSource::class)
+  @ConditionalOnProperty(
+    prefix = "mestri.health",
+    name = ["enabled"],
+    havingValue = "true",
+    matchIfMissing = true,
+  )
+  @ConditionalOnMissingBean
+  fun mestriHealthService(
+    mestriHealthObservationSource: MestriHealthObservationSource,
+    clock: Clock,
+  ): MestriHealthService =
+    MestriHealthService(
+      observationSource = mestriHealthObservationSource,
+      clock = { Instant.now(clock) },
     )
 
   @Bean

@@ -1,6 +1,7 @@
 package `in`.supertiny.mestri.spring.boot.autoconfigure
 
 import `in`.supertiny.mestri.core.health.MestriHealthObservation
+import `in`.supertiny.mestri.core.health.MestriHealthObservationSource
 import `in`.supertiny.mestri.core.health.MestriHealthService
 import `in`.supertiny.mestri.core.health.MestriHealthStatus
 import `in`.supertiny.mestri.core.health.RedisHealth
@@ -84,6 +85,9 @@ class MestriAutoConfigurationTest {
       assertSingleBean<MestriWorkerLifecycle>(context)
       assertSingleBean<MestriSchedulerLifecycle>(context)
       assertSingleBean<MestriMaintenanceLifecycle>(context)
+      assertSingleBean<MestriHealthObservationSource>(context)
+      assertSingleBean<MestriHealthService>(context)
+      assertSingleBean<MestriHealthIndicator>(context)
       assertSingleBean<ServerExecutionPipeline>(context)
       assertSingleBean<ServerMiddlewareRegistry>(context)
       assertSingleBean<RecurringJobDefinitionStore>(context)
@@ -208,6 +212,15 @@ class MestriAutoConfigurationTest {
         assertEquals(2, health.details["activeWorkers"])
         assertEquals("configured threshold exceeded", health.details["reason"])
       }
+  }
+
+  @Test
+  fun `health service is auto configured when health is enabled`() {
+    contextRunner.run { context ->
+      assertSingleBean<MestriHealthObservationSource>(context)
+      assertSingleBean<MestriHealthService>(context)
+      assertSingleBean<MestriHealthIndicator>(context)
+    }
   }
 
   @Test
