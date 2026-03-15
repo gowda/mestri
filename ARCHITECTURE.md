@@ -135,7 +135,7 @@ Responsibilities may include:
 
 ### Middleware Contracts
 
-The core library will define:
+The core library defines:
 
 - `ClientMiddleware`
 - `ClientChain`
@@ -234,15 +234,36 @@ This is intentionally closer to Sidekiq’s runtime model than a standalone `run
 
 ## Deduplication
 
-Mestri will provide optional deduplication support.
+Mestri provides optional deduplication support.
 
 Deduplication can be driven by:
 
 - explicit deduplication key
 - middleware-derived deduplication strategy
 - configurable default policies for scheduled or immediate jobs
+- `ENQUEUE` and `SCHEDULE` scopes
+- `REJECT` and `COALESCE` strategies for scheduled jobs
 
 This replaces brittle application-level cleanup logic based on job-name scanning.
+
+## Current Implementation Status
+
+The current implementation includes:
+
+- core job, middleware, runtime, and serialization contracts
+- Redis-backed queue, lease, heartbeat, retention, and deduplication primitives
+- worker reservation and execution pipeline
+- success, retry, dead-letter, and maintenance flows
+- scheduled and retry promotion loops
+- recurring job definitions, scheduling, and timezone-aware next-run calculation
+- real Redis integration coverage for the implemented Redis runtime behaviors
+
+The next major delivery area is Spring Boot adoption:
+
+- starter configuration properties
+- lifecycle wiring
+- health integration
+- JobRunr-compatible application-facing APIs
 
 ## Retention Model
 

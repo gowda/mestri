@@ -25,7 +25,7 @@ Mestri is initially scoped for Spring Boot 3.3.x applications, matching the curr
 ## Requirements
 
 - Java 17+
-- Gradle 8.10.2 wrapper
+- Gradle 9.4.0 wrapper
 - Redis
 
 ## Getting Started
@@ -33,7 +33,7 @@ Mestri is initially scoped for Spring Boot 3.3.x applications, matching the curr
 Generate the Gradle wrapper if it is not already present:
 
 ```bash
-gradle wrapper --gradle-version 8.10.2
+gradle wrapper --gradle-version 9.4.0
 ```
 
 List the modules in the project:
@@ -104,6 +104,12 @@ This repository currently contains:
   - orphaned running-job recovery into `retry` or `queued`
   - stale worker and process registry cleanup
   - retention cleanup for `succeeded`, `deleted`, `retry`, and `dead`
+- completed work for scheduling, recurring jobs, and deduplication:
+  - scheduled and retry promotion into queue buckets
+  - recurring job definitions with cron and timezone support
+  - recurring scheduling and next-run calculation
+  - deduplication for immediate and scheduled jobs
+  - direct Redis-backed dedup acceptance, rejection, and expiry coverage
 - GitHub Actions test automation
 - Dependabot configuration for Gradle and GitHub Actions updates
 
@@ -117,8 +123,11 @@ Current implementation coverage includes:
   - job records
   - immediate queue enqueue
   - scheduled and retry persistence
+  - scheduled and retry promotion
   - lease and heartbeat persistence
   - dead, succeeded, and deleted retention markers
+  - recurring definition persistence
+  - deduplication claims
 - shared Testcontainers-based Redis integration test support for `mestri-redis`
 - maintenance and recovery coverage for:
   - worker crash recovery
@@ -126,7 +135,7 @@ Current implementation coverage includes:
   - stale worker cleanup
   - retained-bucket trimming
 
-The next major focus is scheduling, promotion, and recurring jobs.
+The next major focus is the Spring Boot starter, health model, and JobRunr-compatible application facade.
 
 ## Automation
 
