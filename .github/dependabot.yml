@@ -17,8 +17,10 @@ updates:
       - dependency-name: "org.springframework.boot"
       - dependency-name: "org.jetbrains.kotlin.jvm:org.jetbrains.kotlin.jvm.gradle.plugin"
       - dependency-name: "org.jetbrains.kotlin.jvm"
+      - dependency-name: "jvm"
       - dependency-name: "org.jetbrains.kotlin.plugin.spring:org.jetbrains.kotlin.plugin.spring.gradle.plugin"
       - dependency-name: "org.jetbrains.kotlin.plugin.spring"
+      - dependency-name: "plugin.spring"
       - dependency-name: "org.junit:junit-bom"
         update-types:
           - "version-update:semver-major"
