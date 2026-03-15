@@ -13,33 +13,12 @@ updates:
       # Keep the build and framework baseline stable for the current
       # Spring Boot 3.3 / Kotlin 1.9 / Java 17 support target.
       - dependency-name: "gradle"
-        update-types:
-          - "version-update:semver-major"
-          - "version-update:semver-minor"
       - dependency-name: "org.springframework.boot:spring-boot-gradle-plugin"
-        update-types:
-          - "version-update:semver-major"
-          - "version-update:semver-minor"
       - dependency-name: "org.springframework.boot"
-        update-types:
-          - "version-update:semver-major"
-          - "version-update:semver-minor"
       - dependency-name: "org.jetbrains.kotlin.jvm:org.jetbrains.kotlin.jvm.gradle.plugin"
-        update-types:
-          - "version-update:semver-major"
-          - "version-update:semver-minor"
       - dependency-name: "org.jetbrains.kotlin.jvm"
-        update-types:
-          - "version-update:semver-major"
-          - "version-update:semver-minor"
       - dependency-name: "org.jetbrains.kotlin.plugin.spring:org.jetbrains.kotlin.plugin.spring.gradle.plugin"
-        update-types:
-          - "version-update:semver-major"
-          - "version-update:semver-minor"
       - dependency-name: "org.jetbrains.kotlin.plugin.spring"
-        update-types:
-          - "version-update:semver-major"
-          - "version-update:semver-minor"
       - dependency-name: "org.junit:junit-bom"
         update-types:
           - "version-update:semver-major"
