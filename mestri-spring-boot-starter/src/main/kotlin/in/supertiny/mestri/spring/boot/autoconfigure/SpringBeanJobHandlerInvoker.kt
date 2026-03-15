@@ -5,9 +5,12 @@ import `in`.supertiny.mestri.core.model.InvocationArgument
 import `in`.supertiny.mestri.core.model.SpringBeanTarget
 import `in`.supertiny.mestri.core.runtime.JobHandlerInvoker
 import `in`.supertiny.mestri.core.runtime.JobReservation
+import org.jobrunr.jobs.context.JobContext
+import org.jobrunr.jobs.context.MestriJobContext
 import org.springframework.context.ApplicationContext
 import org.springframework.util.ClassUtils
 import java.lang.reflect.Method
+import org.jobrunr.jobs.JobId as CompatJobId
 
 class SpringBeanJobHandlerInvoker(
   private val applicationContext: ApplicationContext,
@@ -31,7 +34,7 @@ class SpringBeanJobHandlerInvoker(
     val arguments =
       request.invocation.arguments
         .mapIndexed { index, argument ->
-          deserializeArgument(argument, parameterTypes[index])
+          deserializeArgument(argument, parameterTypes[index], request)
         }.toTypedArray()
 
     method.isAccessible = true
@@ -63,7 +66,16 @@ class SpringBeanJobHandlerInvoker(
   private fun deserializeArgument(
     argument: InvocationArgument,
     parameterType: Class<*>,
+    request: `in`.supertiny.mestri.core.middleware.ServerExecutionRequest,
   ): Any? {
+    if (JobContext::class.java.isAssignableFrom(parameterType)) {
+      return MestriJobContext(
+        jobId = CompatJobId.from(request.jobId),
+        queue = request.queue.value,
+        attempt = request.attempt,
+        metadata = request.metadata,
+      )
+    }
     val serializedValue = argument.serializedValue ?: return null
     return objectMapper.readValue(serializedValue, parameterType)
   }

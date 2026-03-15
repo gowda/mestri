@@ -41,6 +41,8 @@ import `in`.supertiny.mestri.redis.RedisQueueReservationStore
 import `in`.supertiny.mestri.redis.RedisScheduledJobPromoter
 import `in`.supertiny.mestri.redis.RedisScheduledJobStore
 import `in`.supertiny.mestri.redis.RedisTerminalJobStore
+import org.jobrunr.jobs.context.JobContext
+import org.jobrunr.jobs.context.NoOpJobContext
 import org.jobrunr.jobs.lambdas.JobLambda
 import org.jobrunr.scheduling.BackgroundJob
 import org.jobrunr.scheduling.JobScheduler
@@ -180,6 +182,35 @@ class MestriAutoConfigurationTest {
 
         assertEquals("invoice-42", recorder.lastInvoiceId)
         assertEquals(3, recorder.lastRetryCount)
+      }
+  }
+
+  @Test
+  fun `job handler invoker supplies job context to compatible handlers`() {
+    contextRunner
+      .withUserConfiguration(SampleJobConfiguration::class.java)
+      .run { context ->
+        val invoker = context.getBean(JobHandlerInvoker::class.java)
+        val recorder = context.getBean(InvocationRecorder::class.java)
+        val reservation = sampleReservationWithContext()
+
+        invoker.invoke(
+          reservation = reservation,
+          request =
+            ServerExecutionRequest(
+              jobId = JobId("job-ctx-123"),
+              invocation = reservation.payload.invocation,
+              queue = QueueName("billing"),
+              attempt = 2,
+              metadata = mapOf("traceId" to "trace-123"),
+            ),
+        )
+
+        assertEquals("invoice-ctx-42", recorder.lastInvoiceId)
+        assertEquals("job-ctx-123", recorder.lastJobContext.jobId?.value)
+        assertEquals("billing", recorder.lastJobContext.queue)
+        assertEquals(2, recorder.lastJobContext.attempt)
+        assertEquals("trace-123", recorder.lastJobContext.metadata["traceId"])
       }
   }
 
@@ -475,9 +506,51 @@ class MestriAutoConfigurationTest {
       reservedAt = Instant.parse("2026-03-15T12:00:00Z"),
     )
 
+  private fun sampleReservationWithContext(): JobReservation =
+    JobReservation(
+      lease =
+        JobLease(
+          jobId = JobId("job-ctx-123"),
+          workerId =
+            `in`.supertiny.mestri.core.runtime
+              .WorkerId("worker-1"),
+          acquiredAt = Instant.parse("2026-03-15T12:00:00Z"),
+          expiresAt = Instant.parse("2026-03-15T12:05:00Z"),
+        ),
+      payload =
+        JobPayload(
+          jobId = JobId("job-ctx-123"),
+          invocation =
+            InvocationDescriptor(
+              target =
+                SpringBeanTarget(
+                  className = SampleJobs::class.java.name,
+                  beanName = "sampleJobs",
+                ),
+              method =
+                InvocationMethod(
+                  name = "processWithContext",
+                  parameterTypeNames =
+                    listOf(
+                      "java.lang.String",
+                      "org.jobrunr.jobs.context.JobContext",
+                    ),
+                ),
+              arguments =
+                listOf(
+                  InvocationArgument("java.lang.String", "\"invoice-ctx-42\""),
+                  InvocationArgument("org.jobrunr.jobs.context.JobContext", null),
+                ),
+            ),
+          queue = QueueName("billing"),
+        ),
+      reservedAt = Instant.parse("2026-03-15T12:00:00Z"),
+    )
+
   class InvocationRecorder {
     var lastInvoiceId: String? = null
     var lastRetryCount: Int? = null
+    var lastJobContext: JobContext = NoOpJobContext
   }
 
   class SampleJobs(
@@ -489,6 +562,14 @@ class MestriAutoConfigurationTest {
     ) {
       recorder.lastInvoiceId = invoiceId
       recorder.lastRetryCount = retryCount
+    }
+
+    fun processWithContext(
+      invoiceId: String,
+      jobContext: JobContext,
+    ) {
+      recorder.lastInvoiceId = invoiceId
+      recorder.lastJobContext = jobContext
     }
   }
 
