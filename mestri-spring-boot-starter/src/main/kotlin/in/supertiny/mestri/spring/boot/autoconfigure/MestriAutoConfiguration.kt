@@ -360,4 +360,73 @@ class MestriAutoConfiguration {
       store = recurringJobDefinitionStore,
       clock = { Instant.now(clock) },
     )
+
+  @Bean
+  @ConditionalOnProperty(
+    prefix = "mestri.worker",
+    name = ["enabled"],
+    havingValue = "true",
+    matchIfMissing = true,
+  )
+  @ConditionalOnMissingBean
+  fun mestriWorkerLifecycle(
+    mestriProperties: MestriProperties,
+    redisQueueReservationStore: RedisQueueReservationStore,
+    serverExecutionPipeline: ServerExecutionPipeline,
+    redisSuccessfulExecutionHandler: RedisSuccessfulExecutionHandler,
+    redisRetryExecutionHandler: `in`.supertiny.mestri.redis.RedisRetryExecutionHandler,
+    redisDeadLetterExecutionHandler: RedisDeadLetterExecutionHandler,
+    redisWorkerHeartbeatStore: RedisWorkerHeartbeatStore,
+    clock: Clock,
+  ): MestriWorkerLifecycle =
+    MestriWorkerLifecycle(
+      properties = mestriProperties.worker,
+      reservationStore = redisQueueReservationStore,
+      executionPipeline = serverExecutionPipeline,
+      successHandler = redisSuccessfulExecutionHandler,
+      retryHandler = redisRetryExecutionHandler,
+      deadLetterHandler = redisDeadLetterExecutionHandler,
+      heartbeatStore = redisWorkerHeartbeatStore,
+      clock = clock,
+    )
+
+  @Bean
+  @ConditionalOnProperty(
+    prefix = "mestri.scheduler",
+    name = ["enabled"],
+    havingValue = "true",
+    matchIfMissing = true,
+  )
+  @ConditionalOnMissingBean
+  fun mestriSchedulerLifecycle(
+    mestriProperties: MestriProperties,
+    redisScheduledJobPromoter: RedisScheduledJobPromoter,
+    recurringJobScheduler: RecurringJobScheduler,
+    redisImmediateJobEnqueuer: RedisImmediateJobEnqueuer,
+    clock: Clock,
+  ): MestriSchedulerLifecycle =
+    MestriSchedulerLifecycle(
+      properties = mestriProperties.scheduler,
+      scheduledJobPromoter = redisScheduledJobPromoter,
+      recurringJobScheduler = recurringJobScheduler,
+      immediateJobEnqueuer = redisImmediateJobEnqueuer,
+      clock = clock,
+    )
+
+  @Bean
+  @ConditionalOnProperty(
+    prefix = "mestri.worker",
+    name = ["enabled"],
+    havingValue = "true",
+    matchIfMissing = true,
+  )
+  @ConditionalOnMissingBean
+  fun mestriMaintenanceLifecycle(
+    mestriProperties: MestriProperties,
+    maintenanceLoop: MaintenanceLoop,
+  ): MestriMaintenanceLifecycle =
+    MestriMaintenanceLifecycle(
+      maintenanceLoop = maintenanceLoop,
+      interval = mestriProperties.worker.heartbeatInterval,
+    )
 }

@@ -74,6 +74,9 @@ class MestriAutoConfigurationTest {
       assertSingleBean<RedisMaintenanceSnapshotSource>(context)
       assertSingleBean<RedisMaintenanceExecutor>(context)
       assertSingleBean<MaintenanceLoop>(context)
+      assertSingleBean<MestriWorkerLifecycle>(context)
+      assertSingleBean<MestriSchedulerLifecycle>(context)
+      assertSingleBean<MestriMaintenanceLifecycle>(context)
       assertSingleBean<ServerExecutionPipeline>(context)
       assertSingleBean<ServerMiddlewareRegistry>(context)
       assertSingleBean<RecurringJobDefinitionStore>(context)
@@ -88,6 +91,25 @@ class MestriAutoConfigurationTest {
       .run { context ->
         kotlin.test.assertFalse(context.containsBean("mestriRedisJobRecordStore"))
         kotlin.test.assertFalse(context.containsBean("mestriRedisImmediateJobEnqueuer"))
+      }
+  }
+
+  @Test
+  fun `auto configuration backs off worker lifecycle when worker is disabled`() {
+    contextRunner
+      .withPropertyValues("mestri.worker.enabled=false")
+      .run { context ->
+        kotlin.test.assertFalse(context.containsBean("mestriWorkerLifecycle"))
+        kotlin.test.assertFalse(context.containsBean("mestriMaintenanceLifecycle"))
+      }
+  }
+
+  @Test
+  fun `auto configuration backs off scheduler lifecycle when scheduler is disabled`() {
+    contextRunner
+      .withPropertyValues("mestri.scheduler.enabled=false")
+      .run { context ->
+        kotlin.test.assertFalse(context.containsBean("mestriSchedulerLifecycle"))
       }
   }
 
