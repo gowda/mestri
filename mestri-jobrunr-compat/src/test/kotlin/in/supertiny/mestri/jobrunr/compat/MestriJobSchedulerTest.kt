@@ -15,46 +15,53 @@ import `in`.supertiny.mestri.redis.RedisListAccessor
 import `in`.supertiny.mestri.redis.RedisScheduledJobStore
 import `in`.supertiny.mestri.redis.RedisSortedSetAccessor
 import org.jobrunr.jobs.lambdas.JobLambda
+import org.jobrunr.scheduling.BackgroundJob
 import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import `in`.supertiny.mestri.core.model.JobId as MestriJobId
 
 class MestriJobSchedulerTest {
   @Test
+  fun `background job delegates enqueue to configured scheduler`() {
+    val scheduler = scheduler(jobId = "job-compat-bg")
+
+    BackgroundJob.reset()
+    BackgroundJob.configure(scheduler)
+
+    val jobId = BackgroundJob.enqueue(sampleJobLambda())
+
+    assertEquals("job-compat-bg", jobId.value)
+    assertEquals(
+      listOf("job-compat-bg"),
+      scheduler.listAccessor.values("mestri:queue:billing"),
+    )
+    BackgroundJob.reset()
+  }
+
+  @Test
+  fun `background job fails fast when scheduler is not configured`() {
+    BackgroundJob.reset()
+
+    assertFailsWith<IllegalStateException> {
+      BackgroundJob.enqueue(sampleJobLambda())
+    }
+  }
+
+  @Test
   fun `enqueue persists queued payload and returns compat job id`() {
-    val hashAccessor = InMemoryHashAccessor()
-    val listAccessor = InMemoryListAccessor()
-    val sortedSetAccessor = InMemorySortedSetAccessor()
-    val recordStore =
-      RedisJobRecordStore(
-        hashAccessor = hashAccessor,
-        mapper = RedisJobRecordMapper(JacksonJobPayloadSerializer()),
-      )
-    val enqueuer =
-      RedisImmediateJobEnqueuer(
-        jobRecordStore = recordStore,
-        listAccessor = listAccessor,
-      )
-    val scheduledStore =
-      RedisScheduledJobStore(
-        jobRecordStore = recordStore,
-        sortedSetAccessor = sortedSetAccessor,
-      )
-    val scheduler =
-      MestriJobScheduler(
-        immediateJobEnqueuer = enqueuer,
-        scheduledJobStore = scheduledStore,
-        defaultQueue = QueueName("billing"),
-        jobIdGenerator = { MestriJobId("job-compat-1") },
-      )
+    val scheduler = scheduler(jobId = "job-compat-1")
 
     val jobId = scheduler.enqueue(sampleJobLambda())
-    val storedRecord = recordStore.find(MestriJobId("job-compat-1"))
+    val storedRecord = scheduler.recordStore.find(MestriJobId("job-compat-1"))
 
     assertEquals("job-compat-1", jobId.value)
-    assertEquals(listOf("job-compat-1"), listAccessor.values("mestri:queue:billing"))
+    assertEquals(
+      listOf("job-compat-1"),
+      scheduler.listAccessor.values("mestri:queue:billing"),
+    )
     assertNotNull(storedRecord)
     assertEquals(JobBucket.QUEUED, storedRecord.bucket)
     assertEquals(QueueName("billing"), storedRecord.payload.queue)
@@ -63,6 +70,23 @@ class MestriJobSchedulerTest {
 
   @Test
   fun `schedule persists scheduled payload and returns compat job id`() {
+    val scheduler = scheduler(jobId = "job-compat-2")
+
+    val jobId = scheduler.schedule(Instant.parse("2026-03-15T14:00:00Z"), sampleJobLambda())
+    val storedRecord = scheduler.recordStore.find(MestriJobId("job-compat-2"))
+
+    assertEquals("job-compat-2", jobId.value)
+    assertEquals(1, scheduler.sortedSetAccessor.range("mestri:scheduled", 0, 10).size)
+    assertEquals(
+      "job-compat-2",
+      scheduler.sortedSetAccessor.range("mestri:scheduled", 0, 10).single(),
+    )
+    assertNotNull(storedRecord)
+    assertEquals(JobBucket.SCHEDULED, storedRecord.bucket)
+    assertEquals(QueueName("billing"), storedRecord.payload.queue)
+  }
+
+  private fun scheduler(jobId: String): TestScheduler {
     val hashAccessor = InMemoryHashAccessor()
     val listAccessor = InMemoryListAccessor()
     val sortedSetAccessor = InMemorySortedSetAccessor()
@@ -81,23 +105,19 @@ class MestriJobSchedulerTest {
         jobRecordStore = recordStore,
         sortedSetAccessor = sortedSetAccessor,
       )
-    val scheduler =
-      MestriJobScheduler(
-        immediateJobEnqueuer = enqueuer,
-        scheduledJobStore = scheduledStore,
-        defaultQueue = QueueName("billing"),
-        jobIdGenerator = { MestriJobId("job-compat-2") },
-      )
 
-    val jobId = scheduler.schedule(Instant.parse("2026-03-15T14:00:00Z"), sampleJobLambda())
-    val storedRecord = recordStore.find(MestriJobId("job-compat-2"))
-
-    assertEquals("job-compat-2", jobId.value)
-    assertEquals(1, sortedSetAccessor.range("mestri:scheduled", 0, 10).size)
-    assertEquals("job-compat-2", sortedSetAccessor.range("mestri:scheduled", 0, 10).single())
-    assertNotNull(storedRecord)
-    assertEquals(JobBucket.SCHEDULED, storedRecord.bucket)
-    assertEquals(QueueName("billing"), storedRecord.payload.queue)
+    return TestScheduler(
+      scheduler =
+        MestriJobScheduler(
+          immediateJobEnqueuer = enqueuer,
+          scheduledJobStore = scheduledStore,
+          defaultQueue = QueueName("billing"),
+          jobIdGenerator = { MestriJobId(jobId) },
+        ),
+      recordStore = recordStore,
+      listAccessor = listAccessor,
+      sortedSetAccessor = sortedSetAccessor,
+    )
   }
 
   private fun sampleJobLambda(): JobLambda =
@@ -196,4 +216,11 @@ class MestriJobSchedulerTest {
       values[key]?.remove(value)
     }
   }
+
+  private data class TestScheduler(
+    val scheduler: MestriJobScheduler,
+    val recordStore: RedisJobRecordStore,
+    val listAccessor: InMemoryListAccessor,
+    val sortedSetAccessor: InMemorySortedSetAccessor,
+  ) : org.jobrunr.scheduling.JobScheduler by scheduler
 }

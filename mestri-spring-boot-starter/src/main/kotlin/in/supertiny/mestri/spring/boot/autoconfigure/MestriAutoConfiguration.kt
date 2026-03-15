@@ -225,6 +225,11 @@ class MestriAutoConfiguration {
     )
 
   @Bean
+  @ConditionalOnBean(JobScheduler::class)
+  fun mestriBackgroundJobBridge(jobScheduler: JobScheduler): BackgroundJobBridge =
+    BackgroundJobBridge(jobScheduler)
+
+  @Bean
   @ConditionalOnMissingBean
   fun mestriRedisScheduledJobStore(
     redisJobRecordStore: RedisJobRecordStore,

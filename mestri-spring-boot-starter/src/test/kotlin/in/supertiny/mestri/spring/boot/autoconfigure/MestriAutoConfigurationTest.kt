@@ -41,6 +41,8 @@ import `in`.supertiny.mestri.redis.RedisQueueReservationStore
 import `in`.supertiny.mestri.redis.RedisScheduledJobPromoter
 import `in`.supertiny.mestri.redis.RedisScheduledJobStore
 import `in`.supertiny.mestri.redis.RedisTerminalJobStore
+import org.jobrunr.jobs.lambdas.JobLambda
+import org.jobrunr.scheduling.BackgroundJob
 import org.jobrunr.scheduling.JobScheduler
 import org.mockito.Mockito.mock
 import org.springframework.boot.actuate.health.Status
@@ -73,6 +75,7 @@ class MestriAutoConfigurationTest {
   fun `auto configuration registers core redis runtime beans`() {
     contextRunner.run { context ->
       assertSingleBean<MestriProperties>(context)
+      assertSingleBean<BackgroundJobBridge>(context)
       assertSingleBean<JobScheduler>(context)
       assertSingleBean<ClientMiddlewareRegistry>(context)
       assertSingleBean<JobHandlerInvoker>(context)
@@ -108,6 +111,21 @@ class MestriAutoConfigurationTest {
         kotlin.test.assertFalse(context.containsBean("mestriRedisJobRecordStore"))
         kotlin.test.assertFalse(context.containsBean("mestriRedisImmediateJobEnqueuer"))
       }
+  }
+
+  @Test
+  fun `background job is configured from auto configured job scheduler`() {
+    BackgroundJob.reset()
+
+    contextRunner
+      .withUserConfiguration(StaticBackgroundJobConfiguration::class.java)
+      .run {
+        val jobId = BackgroundJob.enqueue(JobLambda { sampleReservation().payload.invocation })
+
+        assertEquals("background-job-1", jobId.value)
+      }
+
+    BackgroundJob.reset()
   }
 
   @Test
@@ -350,6 +368,21 @@ class MestriAutoConfigurationTest {
             )
           },
       )
+  }
+
+  @Configuration(proxyBeanMethods = false)
+  private class StaticBackgroundJobConfiguration {
+    @Bean
+    fun mestriJobScheduler(): JobScheduler =
+      object : JobScheduler {
+        override fun enqueue(job: JobLambda): org.jobrunr.jobs.JobId =
+          org.jobrunr.jobs.JobId("background-job-1")
+
+        override fun schedule(
+          instant: Instant,
+          job: JobLambda,
+        ): org.jobrunr.jobs.JobId = org.jobrunr.jobs.JobId("background-job-1")
+      }
   }
 
   @Configuration(proxyBeanMethods = false)
