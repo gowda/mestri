@@ -1,5 +1,14 @@
 package `in`.supertiny.mestri.spring.boot.autoconfigure
 
+import `in`.supertiny.mestri.core.middleware.ClientChain
+import `in`.supertiny.mestri.core.middleware.ClientEnqueueRequest
+import `in`.supertiny.mestri.core.middleware.ClientEnqueueResult
+import `in`.supertiny.mestri.core.middleware.ClientMiddleware
+import `in`.supertiny.mestri.core.middleware.ServerChain
+import `in`.supertiny.mestri.core.middleware.ServerExecutionOutcome
+import `in`.supertiny.mestri.core.middleware.ServerExecutionRequest
+import `in`.supertiny.mestri.core.middleware.ServerExecutionResult
+import `in`.supertiny.mestri.core.middleware.ServerMiddleware
 import `in`.supertiny.mestri.core.model.InvocationArgument
 import `in`.supertiny.mestri.core.model.InvocationDescriptor
 import `in`.supertiny.mestri.core.model.InvocationMethod
@@ -10,6 +19,7 @@ import `in`.supertiny.mestri.core.runtime.JobHandlerInvoker
 import `in`.supertiny.mestri.core.runtime.JobLease
 import `in`.supertiny.mestri.core.runtime.JobReservation
 import `in`.supertiny.mestri.core.runtime.MaintenanceLoop
+import `in`.supertiny.mestri.core.runtime.ServerExecutionPipeline
 import `in`.supertiny.mestri.core.scheduling.RecurringJobDefinitionStore
 import `in`.supertiny.mestri.core.scheduling.RecurringJobScheduler
 import `in`.supertiny.mestri.core.serialization.JobPayload
@@ -28,6 +38,7 @@ import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
 import org.springframework.boot.test.context.runner.ApplicationContextRunner
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.core.Ordered
 import org.springframework.data.redis.connection.RedisConnectionFactory
 import org.springframework.data.redis.core.StringRedisTemplate
 import java.time.Clock
@@ -51,6 +62,7 @@ class MestriAutoConfigurationTest {
   fun `auto configuration registers core redis runtime beans`() {
     contextRunner.run { context ->
       assertSingleBean<MestriProperties>(context)
+      assertSingleBean<ClientMiddlewareRegistry>(context)
       assertSingleBean<JobHandlerInvoker>(context)
       assertSingleBean<JobPayloadSerializer>(context)
       assertSingleBean<RedisJobRecordStore>(context)
@@ -62,6 +74,8 @@ class MestriAutoConfigurationTest {
       assertSingleBean<RedisMaintenanceSnapshotSource>(context)
       assertSingleBean<RedisMaintenanceExecutor>(context)
       assertSingleBean<MaintenanceLoop>(context)
+      assertSingleBean<ServerExecutionPipeline>(context)
+      assertSingleBean<ServerMiddlewareRegistry>(context)
       assertSingleBean<RecurringJobDefinitionStore>(context)
       assertSingleBean<RecurringJobScheduler>(context)
     }
@@ -113,6 +127,45 @@ class MestriAutoConfigurationTest {
       }
   }
 
+  @Test
+  fun `middleware beans are discovered in Spring order`() {
+    contextRunner
+      .withUserConfiguration(OrderedMiddlewareConfiguration::class.java)
+      .run { context ->
+        val clientRegistry = context.getBean(ClientMiddlewareRegistry::class.java)
+        val serverRegistry = context.getBean(ServerMiddlewareRegistry::class.java)
+
+        assertEquals(
+          listOf("highest-client", "low-client"),
+          clientRegistry.middlewares.map { middleware -> middleware.toString() },
+        )
+        assertEquals(
+          listOf("highest-server", "low-server"),
+          serverRegistry.middlewares.map { middleware -> middleware.toString() },
+        )
+      }
+  }
+
+  @Test
+  fun `server execution pipeline uses ordered Spring server middlewares`() {
+    contextRunner
+      .withUserConfiguration(
+        OrderedMiddlewareConfiguration::class.java,
+        SampleJobConfiguration::class.java,
+      ).run { context ->
+        val pipeline = context.getBean(ServerExecutionPipeline::class.java)
+        val result = pipeline.execute(sampleReservation())
+
+        assertEquals(ServerExecutionOutcome.SUCCEEDED, result.outcome)
+        assertEquals(
+          mapOf(
+            "middleware-order" to "highest>low",
+          ),
+          result.metadata,
+        )
+      }
+  }
+
   @Configuration(proxyBeanMethods = false)
   private class TestRedisConfiguration {
     @Bean
@@ -136,6 +189,39 @@ class MestriAutoConfigurationTest {
       Clock.fixed(
         Instant.parse("2026-03-15T12:00:00Z"),
         ZoneOffset.UTC,
+      )
+  }
+
+  @Configuration(proxyBeanMethods = false)
+  private class OrderedMiddlewareConfiguration {
+    @Bean
+    fun highestClientMiddleware(): ClientMiddleware =
+      OrderedClientMiddleware(
+        name = "highest-client",
+        order = Ordered.HIGHEST_PRECEDENCE,
+      )
+
+    @Bean
+    fun lowClientMiddleware(): ClientMiddleware =
+      OrderedClientMiddleware(
+        name = "low-client",
+        order = Ordered.LOWEST_PRECEDENCE,
+      )
+
+    @Bean
+    fun highestServerMiddleware(): ServerMiddleware =
+      OrderedServerMiddleware(
+        name = "highest-server",
+        nextValue = "highest",
+        order = Ordered.HIGHEST_PRECEDENCE,
+      )
+
+    @Bean
+    fun lowServerMiddleware(): ServerMiddleware =
+      OrderedServerMiddleware(
+        name = "low-server",
+        nextValue = "low",
+        order = Ordered.LOWEST_PRECEDENCE,
       )
   }
 
@@ -197,5 +283,55 @@ class MestriAutoConfigurationTest {
       recorder.lastInvoiceId = invoiceId
       recorder.lastRetryCount = retryCount
     }
+  }
+
+  private open class NamedClientMiddleware(
+    private val name: String,
+  ) : ClientMiddleware {
+    override fun invoke(
+      request: ClientEnqueueRequest,
+      chain: ClientChain,
+    ): ClientEnqueueResult = chain.proceed(request)
+
+    override fun toString(): String = name
+  }
+
+  private class OrderedClientMiddleware(
+    name: String,
+    private val order: Int,
+  ) : NamedClientMiddleware(name),
+    Ordered {
+    override fun getOrder(): Int = order
+  }
+
+  private open class NamedServerMiddleware(
+    private val name: String,
+    private val nextValue: String,
+  ) : ServerMiddleware {
+    override fun invoke(
+      request: ServerExecutionRequest,
+      chain: ServerChain,
+    ): ServerExecutionResult =
+      chain.proceed(
+        request.copy(
+          metadata =
+            request.metadata +
+              mapOf(
+                "middleware-order" to
+                  listOfNotNull(request.metadata["middleware-order"], nextValue).joinToString(">"),
+              ),
+        ),
+      )
+
+    override fun toString(): String = name
+  }
+
+  private class OrderedServerMiddleware(
+    name: String,
+    nextValue: String,
+    private val order: Int,
+  ) : NamedServerMiddleware(name, nextValue),
+    Ordered {
+    override fun getOrder(): Int = order
   }
 }

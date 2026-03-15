@@ -1,11 +1,14 @@
 package `in`.supertiny.mestri.spring.boot.autoconfigure
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import `in`.supertiny.mestri.core.middleware.ClientMiddleware
+import `in`.supertiny.mestri.core.middleware.ServerMiddleware
 import `in`.supertiny.mestri.core.runtime.DefaultMaintenancePlanner
 import `in`.supertiny.mestri.core.runtime.JobHandlerInvoker
 import `in`.supertiny.mestri.core.runtime.MaintenanceLoop
 import `in`.supertiny.mestri.core.runtime.MaintenancePlanner
 import `in`.supertiny.mestri.core.runtime.RetryBackoffCalculator
+import `in`.supertiny.mestri.core.runtime.ServerExecutionPipeline
 import `in`.supertiny.mestri.core.scheduling.RecurringJobDefinitionStore
 import `in`.supertiny.mestri.core.scheduling.RecurringJobScheduler
 import `in`.supertiny.mestri.core.serialization.JobPayloadSerializer
@@ -34,6 +37,7 @@ import `in`.supertiny.mestri.redis.SpringRedisHashAccessor
 import `in`.supertiny.mestri.redis.SpringRedisQueueAccessor
 import `in`.supertiny.mestri.redis.SpringRedisSetAccessor
 import `in`.supertiny.mestri.redis.SpringRedisSortedSetAccessor
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.boot.autoconfigure.AutoConfiguration
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass
@@ -78,6 +82,35 @@ class MestriAutoConfiguration {
     SpringBeanJobHandlerInvoker(
       applicationContext = applicationContext,
       objectMapper = objectMapper.copy(),
+    )
+
+  @Bean
+  @ConditionalOnMissingBean
+  fun mestriClientMiddlewareRegistry(
+    clientMiddlewares: ObjectProvider<ClientMiddleware>,
+  ): ClientMiddlewareRegistry =
+    ClientMiddlewareRegistry(
+      middlewares = clientMiddlewares.orderedStream().toList(),
+    )
+
+  @Bean
+  @ConditionalOnMissingBean
+  fun mestriServerMiddlewareRegistry(
+    serverMiddlewares: ObjectProvider<ServerMiddleware>,
+  ): ServerMiddlewareRegistry =
+    ServerMiddlewareRegistry(
+      middlewares = serverMiddlewares.orderedStream().toList(),
+    )
+
+  @Bean
+  @ConditionalOnMissingBean
+  fun mestriServerExecutionPipeline(
+    serverMiddlewareRegistry: ServerMiddlewareRegistry,
+    jobHandlerInvoker: JobHandlerInvoker,
+  ): ServerExecutionPipeline =
+    ServerExecutionPipeline(
+      middlewares = serverMiddlewareRegistry.middlewares,
+      handlerInvoker = jobHandlerInvoker,
     )
 
   @Bean
