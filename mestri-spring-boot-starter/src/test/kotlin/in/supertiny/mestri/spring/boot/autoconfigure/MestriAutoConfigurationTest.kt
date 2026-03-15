@@ -1,9 +1,11 @@
 package `in`.supertiny.mestri.spring.boot.autoconfigure
 
+import `in`.supertiny.mestri.core.health.MestriHealthAssessment
 import `in`.supertiny.mestri.core.health.MestriHealthObservation
 import `in`.supertiny.mestri.core.health.MestriHealthObservationSource
 import `in`.supertiny.mestri.core.health.MestriHealthService
 import `in`.supertiny.mestri.core.health.MestriHealthStatus
+import `in`.supertiny.mestri.core.health.MestriHealthStatusEvaluator
 import `in`.supertiny.mestri.core.health.RedisHealth
 import `in`.supertiny.mestri.core.health.SchedulerHealth
 import `in`.supertiny.mestri.core.health.WorkerHealth
@@ -86,6 +88,7 @@ class MestriAutoConfigurationTest {
       assertSingleBean<MestriSchedulerLifecycle>(context)
       assertSingleBean<MestriMaintenanceLifecycle>(context)
       assertSingleBean<MestriHealthObservationSource>(context)
+      assertSingleBean<MestriHealthStatusEvaluator>(context)
       assertSingleBean<MestriHealthService>(context)
       assertSingleBean<MestriHealthIndicator>(context)
       assertSingleBean<ServerExecutionPipeline>(context)
@@ -311,7 +314,13 @@ class MestriAutoConfigurationTest {
             details = mapOf("reason" to "configured threshold exceeded"),
           )
         },
-        statusEvaluator = { MestriHealthStatus.DEGRADED },
+        statusEvaluator =
+          {
+            MestriHealthAssessment(
+              status = MestriHealthStatus.DEGRADED,
+              details = mapOf("reason" to "configured threshold exceeded"),
+            )
+          },
       )
   }
 

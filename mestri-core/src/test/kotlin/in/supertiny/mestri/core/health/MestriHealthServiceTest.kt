@@ -66,13 +66,20 @@ class MestriHealthServiceTest {
               ),
           )
         },
-        statusEvaluator = { MestriHealthStatus.DEGRADED },
+        statusEvaluator =
+          {
+            MestriHealthAssessment(
+              status = MestriHealthStatus.DEGRADED,
+              details = mapOf("reason" to "custom"),
+            )
+          },
         clock = { checkedAt },
       )
 
     val snapshot = service.health()
 
     assertEquals(MestriHealthStatus.DEGRADED, snapshot.status)
+    assertEquals("custom", snapshot.details["reason"])
   }
 
   @Test
@@ -104,5 +111,83 @@ class MestriHealthServiceTest {
     val snapshot = service.health()
 
     assertEquals(MestriHealthStatus.DOWN, snapshot.status)
+    assertEquals("redis unreachable", snapshot.details["reason"])
+  }
+
+  @Test
+  fun `threshold evaluator degrades on queue pressure`() {
+    val checkedAt = Instant.parse("2026-03-15T12:00:00Z")
+    val service =
+      MestriHealthService(
+        observationSource = { now ->
+          MestriHealthObservation(
+            checkedAt = now,
+            redis = RedisHealth(reachable = true, checkedAt = now),
+            workers = WorkerHealth(activeWorkers = 2),
+            queues =
+              listOf(
+                QueueDepth(
+                  queue = QueueName("default"),
+                  enqueuedJobs = 6,
+                ),
+              ),
+            scheduler =
+              SchedulerHealth(
+                schedulerEnabled = true,
+                promoterEnabled = true,
+                checkedAt = now,
+              ),
+          )
+        },
+        statusEvaluator =
+          ThresholdBasedMestriHealthStatusEvaluator(
+            ThresholdBasedMestriHealthThresholds(maxEnqueuedJobs = 5),
+          ),
+        clock = { checkedAt },
+      )
+
+    val snapshot = service.health()
+
+    assertEquals(MestriHealthStatus.DEGRADED, snapshot.status)
+    assertEquals("enqueued job threshold exceeded", snapshot.details["reason"])
+  }
+
+  @Test
+  fun `threshold evaluator marks dead jobs or no active workers as down`() {
+    val checkedAt = Instant.parse("2026-03-15T12:00:00Z")
+    val service =
+      MestriHealthService(
+        observationSource = { now ->
+          MestriHealthObservation(
+            checkedAt = now,
+            redis = RedisHealth(reachable = true, checkedAt = now),
+            workers = WorkerHealth(activeWorkers = 0),
+            queues =
+              listOf(
+                QueueDepth(
+                  queue = QueueName("default"),
+                  enqueuedJobs = 1,
+                ),
+              ),
+            buckets = JobBucketDepths(deadJobs = 3),
+            scheduler =
+              SchedulerHealth(
+                schedulerEnabled = true,
+                promoterEnabled = true,
+                checkedAt = now,
+              ),
+          )
+        },
+        statusEvaluator =
+          ThresholdBasedMestriHealthStatusEvaluator(
+            ThresholdBasedMestriHealthThresholds(maxDeadJobs = 2),
+          ),
+        clock = { checkedAt },
+      )
+
+    val snapshot = service.health()
+
+    assertEquals(MestriHealthStatus.DOWN, snapshot.status)
+    assertEquals("no active workers while jobs are queued", snapshot.details["reason"])
   }
 }

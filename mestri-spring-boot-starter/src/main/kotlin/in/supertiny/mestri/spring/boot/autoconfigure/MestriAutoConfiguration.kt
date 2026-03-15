@@ -3,6 +3,9 @@ package `in`.supertiny.mestri.spring.boot.autoconfigure
 import com.fasterxml.jackson.databind.ObjectMapper
 import `in`.supertiny.mestri.core.health.MestriHealthObservationSource
 import `in`.supertiny.mestri.core.health.MestriHealthService
+import `in`.supertiny.mestri.core.health.MestriHealthStatusEvaluator
+import `in`.supertiny.mestri.core.health.ThresholdBasedMestriHealthStatusEvaluator
+import `in`.supertiny.mestri.core.health.ThresholdBasedMestriHealthThresholds
 import `in`.supertiny.mestri.core.middleware.ClientMiddleware
 import `in`.supertiny.mestri.core.middleware.ServerMiddleware
 import `in`.supertiny.mestri.core.model.QueueName
@@ -463,6 +466,27 @@ class MestriAutoConfiguration {
     )
 
   @Bean
+  @ConditionalOnProperty(
+    prefix = "mestri.health",
+    name = ["enabled"],
+    havingValue = "true",
+    matchIfMissing = true,
+  )
+  @ConditionalOnMissingBean
+  fun mestriHealthStatusEvaluator(
+    mestriProperties: MestriProperties,
+  ): MestriHealthStatusEvaluator =
+    ThresholdBasedMestriHealthStatusEvaluator(
+      thresholds =
+        ThresholdBasedMestriHealthThresholds(
+          maxEnqueuedJobs = mestriProperties.health.maxEnqueuedThreshold,
+          maxRetryJobs = mestriProperties.health.maxRetryThreshold,
+          maxDeadJobs = mestriProperties.health.maxDeadThreshold,
+          maxStaleLeases = mestriProperties.health.maxStaleLeaseThreshold,
+        ),
+    )
+
+  @Bean
   @ConditionalOnBean(MestriHealthObservationSource::class)
   @ConditionalOnProperty(
     prefix = "mestri.health",
@@ -473,10 +497,12 @@ class MestriAutoConfiguration {
   @ConditionalOnMissingBean
   fun mestriHealthService(
     mestriHealthObservationSource: MestriHealthObservationSource,
+    mestriHealthStatusEvaluator: MestriHealthStatusEvaluator,
     clock: Clock,
   ): MestriHealthService =
     MestriHealthService(
       observationSource = mestriHealthObservationSource,
+      statusEvaluator = mestriHealthStatusEvaluator,
       clock = { Instant.now(clock) },
     )
 
