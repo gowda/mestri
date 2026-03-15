@@ -10,7 +10,7 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for the detailed architecture and deliv
 
 - `mestri-core`: core job model, middleware contracts, worker engine, scheduling abstractions
 - `mestri-redis`: Redis-backed storage, queues, promotion, leases, recovery
-- `mestri-spring-boot-starter`: Spring Boot auto-configuration, health, dashboard embedding
+- `mestri-spring-boot-starter`: Spring Boot auto-configuration, runtime lifecycle wiring, health, dashboard embedding
 - `mestri-dashboard`: dashboard API and UI
 - `mestri-jobrunr-compat`: JobRunr-compatible facade for application migration
 
@@ -110,6 +110,13 @@ This repository currently contains:
   - recurring scheduling and next-run calculation
   - deduplication for immediate and scheduled jobs
   - direct Redis-backed dedup acceptance, rejection, and expiry coverage
+- completed work for Spring Boot starter integration:
+  - `mestri.*` configuration properties
+  - Spring Boot auto-configuration for the Redis runtime
+  - Spring bean job invocation resolution
+  - ordered middleware bean discovery
+  - worker, scheduler, and maintenance lifecycle wiring
+  - Spring Boot integration tests with sample job beans
 - GitHub Actions test automation
 - Dependabot configuration for Gradle and GitHub Actions updates
 
@@ -134,8 +141,13 @@ Current implementation coverage includes:
   - expired lease recovery
   - stale worker cleanup
   - retained-bucket trimming
+- Spring Boot starter coverage for:
+  - auto-configuration and property binding
+  - ordered middleware registration
+  - Spring bean job invocation
+  - Boot-context execution with sample job beans
 
-The next major focus is the Spring Boot starter, health model, and JobRunr-compatible application facade.
+The next major focus is the health model and JobRunr-compatible application facade.
 
 ## Automation
 

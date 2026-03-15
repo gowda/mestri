@@ -258,10 +258,17 @@ The current implementation includes:
 - recurring job definitions, scheduling, and timezone-aware next-run calculation
 - real Redis integration coverage for the implemented Redis runtime behaviors
 
-The next major delivery area is Spring Boot adoption:
+Spring Boot starter integration is now implemented for:
 
 - starter configuration properties
-- lifecycle wiring
+- Redis runtime auto-configuration
+- Spring bean job invocation
+- middleware discovery and ordering
+- worker, scheduler, and maintenance lifecycle wiring
+- Spring Boot integration tests with sample job beans
+
+The next major delivery area is:
+
 - health integration
 - JobRunr-compatible application-facing APIs
 
