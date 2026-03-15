@@ -2,6 +2,7 @@ package `in`.supertiny.mestri.spring.boot.autoconfigure
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import `in`.supertiny.mestri.core.runtime.DefaultMaintenancePlanner
+import `in`.supertiny.mestri.core.runtime.JobHandlerInvoker
 import `in`.supertiny.mestri.core.runtime.MaintenanceLoop
 import `in`.supertiny.mestri.core.runtime.MaintenancePlanner
 import `in`.supertiny.mestri.core.runtime.RetryBackoffCalculator
@@ -41,6 +42,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
 import org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
 import org.springframework.boot.context.properties.EnableConfigurationProperties
+import org.springframework.context.ApplicationContext
 import org.springframework.context.annotation.Bean
 import org.springframework.data.redis.core.StringRedisTemplate
 import java.time.Clock
@@ -66,6 +68,17 @@ class MestriAutoConfiguration {
   @ConditionalOnMissingBean
   fun mestriJobPayloadSerializer(objectMapper: ObjectMapper): JobPayloadSerializer =
     JacksonJobPayloadSerializer(objectMapper.copy())
+
+  @Bean
+  @ConditionalOnMissingBean
+  fun mestriJobHandlerInvoker(
+    applicationContext: ApplicationContext,
+    objectMapper: ObjectMapper,
+  ): JobHandlerInvoker =
+    SpringBeanJobHandlerInvoker(
+      applicationContext = applicationContext,
+      objectMapper = objectMapper.copy(),
+    )
 
   @Bean
   @ConditionalOnMissingBean
