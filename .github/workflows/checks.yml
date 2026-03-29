@@ -25,7 +25,7 @@ jobs:
           cache: gradle
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Run formatting checks
         run: ./gradlew --no-daemon ktlintCheck
@@ -47,7 +47,7 @@ jobs:
           cache: gradle
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Run unit test suite
         run: ./gradlew --no-daemon test
@@ -69,7 +69,7 @@ jobs:
           cache: gradle
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Run Redis integration tests
         run: ./gradlew --no-daemon :mestri-redis:integrationTest
