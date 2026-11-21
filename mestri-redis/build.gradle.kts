@@ -9,7 +9,7 @@ dependencies {
 
   testImplementation(kotlin("test"))
   testImplementation("org.testcontainers:junit-jupiter:1.21.4")
-  testImplementation("org.testcontainers:testcontainers:1.21.4")
+  testImplementation("org.testcontainers:testcontainers:2.0.5")
 }
 
 tasks.named<Test>("test") {
